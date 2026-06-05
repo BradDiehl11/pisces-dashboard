@@ -26,23 +26,13 @@ html,body{
 /* ── SCREEN GRID ── */
 .screen{
   display:grid;
-  grid-template-rows: 5vh 10vh 1fr 1fr 1fr;
+  grid-template-rows: 10vh 1fr 1fr 1fr;
   height:100vh;
   gap:0.4vh;
   padding:0.4vh 0.8vw 1.8vh;
 }
 
 /* ── TOP BAR ── */
-.topbar{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;border-bottom:2px solid var(--green);padding-bottom:0.3vh;}
-.tabs{display:flex;gap:0.4vw;}
-.topbar-title{display:flex;align-items:center;justify-content:center;font-size:clamp(12px,2vmin,28px);font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--green);}
-.tab{padding:0.3vh 1.2vw;border-radius:6px;cursor:pointer;font-size:clamp(9px,1.3vmin,18px);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:transparent;border:1px solid transparent;transition:all .15s;}
-.tab.nav-tab.active-nav{color:#fff;background:var(--blue);border-color:var(--blue);}
-.tab.nav-tab:hover:not(.active-nav){color:#fff;border-color:rgba(59,130,246,.4);}
-.clock-block{text-align:right;line-height:1.2;}
-.clock{font-size:clamp(14px,2.8vmin,42px);font-weight:800;color:var(--green);font-variant-numeric:tabular-nums;}
-.clock-date{font-size:clamp(8px,1.2vmin,18px);color:var(--muted);}
-.clock-upd{font-size:clamp(7px,1vmin,14px);color:var(--muted);opacity:.7;}
 
 /* ── HERO ROW ── */
 .heroes{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5vw;min-height:0;}
@@ -101,14 +91,12 @@ html,body{
 
 /* ── DUCK RACE TAB ── */
 .tab.nav-tab{color:var(--muted);}
-#race-panel{display:none;grid-row:2 / 6;min-height:0;overflow:hidden;flex-direction:column;border-radius:8px;background:var(--card);border:1px solid var(--border);}
-body.race-mode #race-panel{display:flex;}
-body.race-mode #heroes,body.race-mode #row-picked,body.race-mode #row-received,body.race-mode #row-bottom{display:none;}
+#race-panel{display:flex;flex-direction:column;border-radius:8px;background:var(--card);border:1px solid var(--border);}
 .race-scores{display:flex;justify-content:space-around;background:rgba(0,0,0,.2);border-bottom:1px solid var(--border);padding:0.8vh 0.5vw;flex-shrink:0;}
 .race-score-item{text-align:center;flex:1;}
-.race-score-wh{font-size:clamp(10px,1.6vmin,24px);font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
-.race-score-num{font-size:clamp(18px,3.4vmin,52px);font-weight:900;color:#fff;line-height:1.1;}
-.race-score-goal{font-size:clamp(9px,1.4vmin,20px);color:rgba(255,255,255,0.5);}
+.race-score-wh{font-size:clamp(9px,1.2vmin,16px);font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
+.race-score-num{font-size:clamp(14px,2.2vmin,30px);font-weight:900;color:#fff;line-height:1.1;}
+.race-score-goal{font-size:clamp(8px,1.1vmin,14px);color:rgba(255,255,255,0.5);}
 .race-scene{position:relative;flex:1;overflow:hidden;min-height:120px;}
 .race-sky{position:absolute;top:0;left:0;right:0;height:30px;background:linear-gradient(180deg,#7ec8e3 0%,#aaddf5 100%);z-index:0;overflow:hidden;}
 .race-cloud{position:absolute;background:rgba(255,255,255,.78);border-radius:50%;}
@@ -130,7 +118,7 @@ body.race-mode #heroes,body.race-mode #row-picked,body.race-mode #row-received,b
 .race-duck-wrap{position:absolute;top:50%;transform:translateY(-55%);display:flex;flex-direction:column;align-items:center;transition:left 2s ease;animation:duck-rock 2.4s ease-in-out infinite;z-index:6;}
 .race-pace-line{position:absolute;top:0;bottom:0;height:100%;width:3px;z-index:3;transition:left 2s ease;pointer-events:none;}
 .race-pace-label{position:absolute;top:4px;left:3px;font-size:clamp(7px,1vmin,14px);font-weight:700;letter-spacing:.05em;opacity:.7;white-space:nowrap;pointer-events:none;}
-.race-duck-label{font-size:clamp(9px,1.4vmin,20px);font-weight:800;color:#fff;background:rgba(10,10,10,.78);padding:2px 6px;border-radius:4px;white-space:nowrap;margin-bottom:2px;border:1px solid rgba(255,255,255,.18);}
+.race-duck-label{font-size:clamp(8px,1.1vmin,13px);font-weight:800;color:#fff;background:rgba(10,10,10,.78);padding:2px 6px;border-radius:4px;white-space:nowrap;margin-bottom:2px;border:1px solid rgba(255,255,255,.18);}
 .race-duck-foam{position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);width:120%;height:8px;background:radial-gradient(ellipse,rgba(255,255,255,.65) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
 .race-duck-wake{position:absolute;top:58%;left:-55%;width:52%;height:3px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3));border-radius:2px;pointer-events:none;}
 .race-not-started{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#0a0a0a;color:#666;font-size:clamp(10px,1.5vmin,20px);}
@@ -144,24 +132,12 @@ body.race-mode #heroes,body.race-mode #row-picked,body.race-mode #row-received,b
 </head>
 <body>
 <div class="screen">
-  <div class="topbar">
-    <div class="tabs">
-      <button class="tab nav-tab active-nav" id="tab-wh" onclick="showTab('wh')">WH</button>
-      <button class="tab nav-tab" id="tab-race" onclick="showTab('race')">🦆 Race</button>
-    </div>
-    <div class="topbar-title">Warehouse Logistics</div>
-    <div class="clock-block">
-      <div class="clock" id="clock">--:-- --</div>
-      <div class="clock-date" id="cdate"></div>
-      <div class="clock-upd" id="cupd">Connecting…</div>
-    </div>
-  </div>
   <div class="heroes" id="heroes"><div class="loading"><div class="spinner"></div>Pulling data…</div></div>
   <div class="row" id="row-picked"></div>
   <div class="row" id="row-received"></div>
-  <div id="race-panel"></div>
   <div id="row-bottom">
-    <div id="shippers-panel" style="flex:1;min-width:0;min-height:0;overflow:hidden;"></div>
+    <div id="shippers-panel" style="flex:2;min-width:0;min-height:0;overflow:hidden;"></div>
+    <div id="race-panel" style="flex:1;min-width:0;min-height:0;overflow:hidden;"></div>
   </div>
 </div>
 <div id="status-bar">
@@ -272,13 +248,8 @@ function transformPB(items){
 /* ── STATE ── */
 let data=null, _recInt=null, _recIdx=0;
 
-/* ── CLOCK ── */
-function tick(){
-  const n=new Date();
-  document.getElementById("clock").textContent=n.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  document.getElementById("cdate").textContent=n.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
-}
-setInterval(tick,1000); tick();
+/* ── CLOCK ── (top bar removed) */
+function tick(){}
 
 /* ── STATUS ── */
 function setStatus(ok,msg){
@@ -297,16 +268,12 @@ async function fetchAndRender(){
     const t=transformWH(whItems);
     t.personal_bests=transformPB(pbItems);
     data=t;
-    document.getElementById("cupd").textContent=data.scraped_at
-      ?"Scraped "+new Date(data.scraped_at).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"})
-      :"Data loaded";
     document.getElementById("last-fetch-time").textContent="Fetched "+new Date().toLocaleTimeString();
     setStatus(true,"Connected to SharePoint");
     render(data);
   }catch(e){
     console.error("fetchAndRender:",e);
     setStatus(false,"Error: "+e.message);
-    document.getElementById("cupd").textContent="⚠ Fetch error — retrying…";
   }
 }
 
@@ -494,7 +461,7 @@ window.addEventListener("resize",()=>{clearTimeout(_rsT);_rsT=setTimeout(()=>{if
 
 /* ══════════ DUCK RACE ══════════ */
 /* >>> EDIT DAILY GOALS HERE (Orders Shipped per warehouse) <<< */
-const RACE_GOALS={ "Winchester": 500, "Longmont": 500, "Fort Myer": 500 };
+const RACE_GOALS={ "Winchester": 800, "Longmont": 600, "Fort Myer": 400 };
 const RACE_START_HOUR=7; // race shows after this hour (ET)
 
 const RACE_COLORS={"Winchester":"#00d97e","Longmont":"#3b82f6","Fort Myer":"#a78bfa"};
@@ -508,12 +475,6 @@ const DUCK_IMGS={
 
 function makeDuck(wh,w,h){return `<img src="${DUCK_IMGS[wh]}" width="${w}" height="${h}" style="display:block;image-rendering:auto;" />`;}
 
-window.showTab=function(t){
-  document.body.classList.toggle("race-mode",t==="race");
-  document.getElementById("tab-wh").classList.toggle("active-nav",t==="wh");
-  document.getElementById("tab-race").classList.toggle("active-nav",t==="race");
-  if(t==="race") renderRace();
-};
 
 function raceProgress(){
   const prog={};
@@ -535,7 +496,7 @@ function getPacePct(warehouse){
 
 function renderRace(){
   const el=document.getElementById("race-panel");
-  if(!el||!data||!document.body.classList.contains("race-mode")) return;
+  if(!el||!data) return;
   const goals=RACE_GOALS, prog=raceProgress();
 
   const now=new Date();
@@ -628,7 +589,7 @@ function renderRace(){
     const lH=Math.floor(lanesEl.offsetHeight/3)||52;
     const aW=lanesEl.offsetWidth||260;
     const finishRight=50,startPad=6;
-    const duckW=Math.min(Math.max(40,lH*0.75),110),duckH=duckW;
+    const duckW=Math.min(56,Math.max(34,lH*0.85)),duckH=duckW;
     const trackW=aW-finishRight-startPad-duckW;
 
     RACE_NAMES.forEach((name,i)=>{
