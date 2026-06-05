@@ -111,6 +111,7 @@ html,body{background:var(--navy);color:#fff;font-family:'Segoe UI',system-ui,san
 
 <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <script>
+window.addEventListener("load", function() {
 /* ═══════════════════════════════════════════════════════════════
    CONFIGURATION — fill in CLIENT_ID and TENANT_ID only
    No client secret needed — user logs in once via Microsoft popup
@@ -503,6 +504,7 @@ function renderBottomRow(d){
       <div class="panel-body" style="padding:0;">${shippersBody}</div>
     </div>`;
 }
+}); // end window.onload
 </script>
 </body>
 </html>
