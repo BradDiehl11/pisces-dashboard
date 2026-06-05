@@ -336,7 +336,7 @@ function renderHeroes(d){
       <div class="winner-inner">
         <div class="winner-label">📦 Today's Top Shipper</div>
         <div class="winner-name">${topShipper?formatName(topShipper.n):"—"}</div>
-        <div class="winner-stat">${topShipper?`<span class="stat-num">${fmt(topShipper.v)}</span> shipments`:"No data"}</div>
+        <div class="winner-stat">${topShipper?`<span class="stat-num">${fmt(topShipper.v)}</span> orders shipped`:"No data"}</div>
       </div>
     </div>
     <div class="winner-card" id="rec-card" style="opacity:0;transition:opacity 0.4s ease;">
@@ -351,7 +351,7 @@ function renderHeroes(d){
   startRecRotation([
     {emoji:'🏃',label:'All-Time Record — Picking',   n:recPick?formatName(recPick.n):'No record yet', stat:recPick?fmt(recPick.v)+' units picked':'—'},
     {emoji:'📦',label:'All-Time Record — Receiving', n:recRecv?formatName(recRecv.n):'No record yet', stat:recRecv?fmt(recRecv.v)+' units received':'—'},
-    {emoji:'🚚',label:'All-Time Record — Shipping',  n:recShip?formatName(recShip.n):'No record yet', stat:recShip?fmt(recShip.v)+' shipments':'—'},
+    {emoji:'🚚',label:'All-Time Record — Shipping',  n:recShip?formatName(recShip.n):'No record yet', stat:recShip?fmt(recShip.v)+' orders shipped':'—'},
   ]);
 }
 
