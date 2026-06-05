@@ -62,7 +62,7 @@ html,body{
 .op-row.gold{background:rgba(245,197,24,.07);border-left:3px solid var(--gold);}
 .op-rank{font-size:clamp(10px,1.4vmin,22px);color:var(--muted);width:1.6vmin;text-align:center;flex-shrink:0;font-weight:600;}
 .op-crown{font-size:clamp(10px,1.4vmin,22px);width:1.6vmin;text-align:center;flex-shrink:0;}
-.op-name{font-size:clamp(11px,1.9vmin,30px);font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.op-name{font-size:clamp(16px,3vmin,46px);font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .op-name.gold{color:var(--gold);font-weight:800;}
 .op-hr{font-size:clamp(7px,1.1vmin,17px);color:var(--blue);font-weight:600;min-width:5vmin;text-align:right;flex-shrink:0;opacity:.9;}
 .op-bar-wrap{width:6vmin;height:0.5vmin;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;flex-shrink:0;}
@@ -377,7 +377,7 @@ function startRecRotation(slides){
 function renderMetricRow(rowId,metric,rowColor){
   const rateMetric=metric==="Units Picked"?"Units Picked Per Hour":"Units Received Per Hour (POs and RAs)";
   document.getElementById(rowId).innerHTML=WH.map((wh,i)=>{
-    const ops=sops(wdat(wh,metric));
+    const ops=sops(wdat(wh,metric)).slice(0,5);
     const total=ops.reduce((s,o)=>s+o.v,0);
     const maxV=ops.length?ops[0].v:1;
     const color=rowColor||WH_COLORS[i];
@@ -411,10 +411,11 @@ function renderMetricRow(rowId,metric,rowColor){
 }
 
 function renderBottomRow(d){
-  const shippers=Object.entries(d.shippers?.today||{}).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v);
+  const allShippers=Object.entries(d.shippers?.today||{}).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v);
+  const shippers=allShippers.slice(0,15);
   const maxV=shippers.length?shippers[0].v:1;
-  const total=shippers.reduce((s,o)=>s+o.v,0);
-  const perCol=Math.ceil(shippers.length/3)||1;
+  const total=allShippers.reduce((s,o)=>s+o.v,0);
+  const perCol=5;
   const cols=[[],[],[]];
   shippers.forEach((op,j)=>cols[Math.min(2,Math.floor(j/perCol))].push({op,j}));
   const body=shippers.length===0
