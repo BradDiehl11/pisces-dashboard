@@ -120,7 +120,7 @@ function loadScript(src) {
   });
 }
 
-loadScript("https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js").then(function() {
+loadScript("https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js").then(function() {
 /* ═══════════════════════════════════════════════════════════════
    CONFIGURATION — fill in CLIENT_ID and TENANT_ID only
    No client secret needed — user logs in once via Microsoft popup
@@ -513,6 +513,11 @@ function renderBottomRow(d){
       <div class="panel-body" style="padding:0;">${shippersBody}</div>
     </div>`;
 }
+}).catch(function(e) {
+  document.getElementById("status-dot").className = "err";
+  document.getElementById("status-text").textContent = "Failed to load auth library — check network/CSP";
+  document.getElementById("cupd").textContent = "⚠ Auth library failed to load";
+  console.error("MSAL load error:", e);
 }); // end loadScript.then
 </script>
 </body>
