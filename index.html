@@ -44,9 +44,10 @@ html,body{
 }
 .winner-emoji{font-size:clamp(14px,3vmin,44px);flex-shrink:0;}
 .winner-inner{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
-.winner-label{font-size:clamp(6px,1.1vmin,16px);text-transform:uppercase;letter-spacing:.12em;color:var(--gold);font-weight:700;white-space:nowrap;}
+.winner-label{font-size:clamp(10px,1.8vmin,26px);text-transform:uppercase;letter-spacing:.12em;color:var(--gold);font-weight:700;white-space:nowrap;}
 .winner-name{font-size:clamp(20px,4.2vmin,68px);font-weight:900;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .winner-stat{font-size:clamp(8px,1.3vmin,20px);color:var(--muted);margin-top:0.2vh;white-space:nowrap;}
+.winner-stat .stat-num{color:var(--gold);font-weight:800;}
 
 /* ── METRIC ROWS ── */
 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5vw;min-height:0;overflow:hidden;}
@@ -67,7 +68,7 @@ html,body{
 .op-hr{font-size:clamp(7px,1.1vmin,17px);color:var(--blue);font-weight:600;min-width:5vmin;text-align:right;flex-shrink:0;opacity:.9;}
 .op-bar-wrap{width:6vmin;height:0.5vmin;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;flex-shrink:0;}
 .op-bar{height:100%;border-radius:3px;transition:width .8s;}
-.op-val{font-size:clamp(11px,1.9vmin,30px);font-weight:800;font-variant-numeric:tabular-nums;min-width:5vmin;text-align:right;flex-shrink:0;}
+.op-val{font-size:clamp(16px,3vmin,46px);font-weight:800;font-variant-numeric:tabular-nums;min-width:6vmin;text-align:right;flex-shrink:0;}
 .op-val.gold{color:var(--gold);}
 .wh-winchester .op-bar{background:var(--green);}
 .wh-longmont   .op-bar{background:var(--blue);}
@@ -319,7 +320,7 @@ function renderHeroes(d){
       <div class="winner-inner">
         <div class="winner-label">🏆 Today's Top Picker</div>
         <div class="winner-name">${pw?formatName(pw.n):"—"}</div>
-        <div class="winner-stat">${pw?fmt(pw.v)+" units picked":"No data"}</div>
+        <div class="winner-stat">${pw?`<span class="stat-num">${fmt(pw.v)}</span> units picked`:"No data"}</div>
       </div>
     </div>
     <div class="winner-card">
@@ -327,7 +328,7 @@ function renderHeroes(d){
       <div class="winner-inner">
         <div class="winner-label">🏭 Today's Top Receiver</div>
         <div class="winner-name">${rw?formatName(rw.n):"—"}</div>
-        <div class="winner-stat">${rw?fmt(rw.v)+" units received":"No data"}</div>
+        <div class="winner-stat">${rw?`<span class="stat-num">${fmt(rw.v)}</span> units received`:"No data"}</div>
       </div>
     </div>
     <div class="winner-card">
@@ -335,7 +336,7 @@ function renderHeroes(d){
       <div class="winner-inner">
         <div class="winner-label">📦 Today's Top Shipper</div>
         <div class="winner-name">${topShipper?formatName(topShipper.n):"—"}</div>
-        <div class="winner-stat">${topShipper?fmt(topShipper.v)+" shipments":"No data"}</div>
+        <div class="winner-stat">${topShipper?`<span class="stat-num">${fmt(topShipper.v)}</span> shipments`:"No data"}</div>
       </div>
     </div>
     <div class="winner-card" id="rec-card" style="opacity:0;transition:opacity 0.4s ease;">
@@ -365,7 +366,7 @@ function startRecRotation(slides){
       document.getElementById('rec-emoji').textContent=s.emoji;
       document.getElementById('rec-label').textContent=s.label;
       document.getElementById('rec-name').textContent=s.n;
-      document.getElementById('rec-stat').textContent=s.stat;
+      document.getElementById('rec-stat').innerHTML=String(s.stat).replace(/([\d,\.]+)/, '<span class="stat-num">$1</span>');
       el.style.opacity='1';
       autoFit('.winner-name');
       _recIdx=(_recIdx+1)%slides.length;
