@@ -45,7 +45,7 @@ html,body{
 .winner-emoji{font-size:clamp(14px,3vmin,44px);flex-shrink:0;}
 .winner-inner{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
 .winner-label{font-size:clamp(6px,1.1vmin,16px);text-transform:uppercase;letter-spacing:.12em;color:var(--gold);font-weight:700;white-space:nowrap;}
-.winner-name{font-size:clamp(16px,3.2vmin,52px);font-weight:900;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.winner-name{font-size:clamp(20px,4.2vmin,68px);font-weight:900;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .winner-stat{font-size:clamp(8px,1.3vmin,20px);color:var(--muted);margin-top:0.2vh;white-space:nowrap;}
 
 /* ── METRIC ROWS ── */
@@ -55,10 +55,10 @@ html,body{
 .panel-wh{font-size:clamp(10px,1.5vmin,22px);font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .panel-num{font-size:clamp(12px,1.8vmin,28px);font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0;}
 .panel-avghr{font-size:clamp(7px,1vmin,15px);color:var(--muted);flex-shrink:0;white-space:nowrap;}
-.panel-body{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:space-evenly;min-height:0;}
+.panel-body{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;min-height:0;}
 
 /* ── OPERATOR ROWS ── */
-.op-row{display:flex;align-items:center;gap:0.4vw;padding:0 0.8vw;flex:1;min-height:0;max-height:10vh;}
+.op-row{display:flex;align-items:center;gap:0.4vw;padding:0 0.8vw;flex:0 0 20%;min-height:0;max-height:10vh;}
 .op-row.gold{background:rgba(245,197,24,.07);border-left:3px solid var(--gold);}
 .op-rank{font-size:clamp(10px,1.4vmin,22px);color:var(--muted);width:1.6vmin;text-align:center;flex-shrink:0;font-weight:600;}
 .op-crown{font-size:clamp(10px,1.4vmin,22px);width:1.6vmin;text-align:center;flex-shrink:0;}
@@ -95,7 +95,7 @@ html,body{
 .race-scores{display:flex;justify-content:space-around;background:rgba(0,0,0,.2);border-bottom:1px solid var(--border);padding:0.8vh 0.5vw;flex-shrink:0;}
 .race-score-item{text-align:center;flex:1;}
 .race-score-wh{font-size:clamp(9px,1.2vmin,16px);font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
-.race-score-num{font-size:clamp(14px,2.2vmin,30px);font-weight:900;color:#fff;line-height:1.1;}
+.race-score-num{font-size:clamp(20px,3.6vmin,52px);font-weight:900;color:#fff;line-height:1.1;}
 .race-score-goal{font-size:clamp(8px,1.1vmin,14px);color:rgba(255,255,255,0.5);}
 .race-scene{position:relative;flex:1;overflow:hidden;min-height:120px;}
 .race-sky{position:absolute;top:0;left:0;right:0;height:30px;background:linear-gradient(180deg,#7ec8e3 0%,#aaddf5 100%);z-index:0;overflow:hidden;}
