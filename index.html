@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pisces — Operator Performance</title>
+<style>
+:root{
+  --navy:#0a1628;--card:#0f1f3d;--border:rgba(255,255,255,0.07);
+  --green:#00d97e;--gold:#f5c518;--blue:#3b82f6;--orange:#f97316;--purple:#a78bfa;
+  --muted:rgba(255,255,255,0.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--navy);color:#fff;font-family:'Segoe UI',system-ui,sans-serif;width:100vw;height:100vh;overflow:hidden;}
+
+.screen{display:grid;grid-template-rows:48px clamp(70px,9vh,100px) 1fr 1fr 1fr;height:100vh;gap:4px;padding:4px 8px;}
+
+/* ── TOP BAR ── */
+.topbar{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:stretch;border-bottom:2px solid var(--green);padding-bottom:4px;}
+.tabs{display:flex;gap:4px;}
+.topbar-title{display:flex;align-items:center;justify-content:center;text-align:center;padding-bottom:6px;font-size:clamp(14px,1.4vw,22px);font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--green);}
+.tab{padding:4px 18px;border-radius:6px;cursor:pointer;font-size:clamp(10px,1vw,16px);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:transparent;border:1px solid transparent;transition:all .15s;}
+.tab.active{color:var(--green);border-color:var(--green);background:rgba(0,217,126,.08);}
+.tab:hover:not(.active){color:#fff;border-color:rgba(255,255,255,.2);}
+.tab.nav-tab{color:var(--blue);border-color:transparent;}
+.tab.nav-tab.active-nav{color:#fff;background:var(--blue);border-color:var(--blue);}
+.tab.nav-tab:hover:not(.active-nav){color:#fff;border-color:rgba(59,130,246,.4);}
+.clock-block{text-align:right;line-height:1.2;}
+.clock{font-size:clamp(14px,1.8vw,30px);font-weight:800;color:var(--green);font-variant-numeric:tabular-nums;}
+.clock-date{font-size:clamp(8px,0.85vw,14px);color:var(--muted);}
+.clock-upd{font-size:9px;color:var(--muted);}
+
+/* ── HERO ROW ── */
+.heroes{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;min-height:0;}
+.winner-card{background:linear-gradient(135deg,#1a2e6b 0%,#0d1a3d 100%);border:1px solid rgba(245,197,24,.4);border-top:3px solid var(--gold);border-radius:7px;padding:clamp(4px,0.5vw,7px) clamp(8px,1vw,14px);display:flex;align-items:center;gap:12px;overflow:hidden;min-width:0;}
+.winner-emoji{font-size:clamp(16px,2vw,32px);flex-shrink:0;}
+.winner-label{font-size:clamp(7px,0.8vw,13px);text-transform:uppercase;letter-spacing:.15em;color:var(--gold);font-weight:700;}
+.winner-name{font-size:clamp(18px,2.8vw,42px);font-weight:900;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.winner-stat{font-size:clamp(9px,1vw,16px);color:var(--muted);margin-top:1px;}
+.winner-pb{font-size:clamp(8px,0.85vw,14px);color:var(--gold);font-weight:700;margin-top:2px;}
+/* ── METRIC ROWS ── */
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;min-height:0;overflow:hidden;}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:7px;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.panel-head{display:flex;align-items:center;gap:8px;padding:4px 10px;background:rgba(0,0,0,.2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.panel-wh{font-size:clamp(11px,1.2vw,19px);font-weight:800;}
+.panel-badge{font-size:clamp(7px,0.75vw,12px);text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:20px;font-weight:700;}
+.badge-green{background:rgba(0,217,126,.15);color:var(--green);}
+.badge-blue{background:rgba(59,130,246,.15);color:#93c5fd;}
+.badge-purple{background:rgba(167,139,250,.15);color:#c4b5fd;}
+.panel-num{font-size:clamp(14px,1.4vw,22px);font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.panel-avghr{font-size:clamp(0.6rem,0.75vw,0.9rem);color:var(--muted);flex-shrink:0;}
+.panel-body{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:space-evenly;padding:1px 0;min-height:0;}
+.op-row{display:flex;align-items:center;gap:6px;padding:0 10px;flex:1;min-height:20px;max-height:38px;}
+.op-row.gold{background:rgba(245,197,24,.07);border-left:3px solid var(--gold);}
+.op-rank{font-size:clamp(11px,1.1vw,18px);color:var(--muted);width:16px;text-align:center;flex-shrink:0;font-weight:600;}
+.op-crown{font-size:clamp(11px,1.1vw,18px);width:16px;text-align:center;flex-shrink:0;}
+.op-name{font-size:clamp(13px,1.6vw,26px);font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.op-name.gold{color:var(--gold);font-weight:800;}
+.op-hr{font-size:clamp(0.65rem,0.9vw,1rem);color:var(--blue);font-weight:600;min-width:42px;text-align:right;opacity:.9;}
+.op-bar-wrap{width:60px;height:4px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.op-bar{height:100%;border-radius:3px;transition:width .8s;}
+.op-val{font-size:clamp(13px,1.6vw,26px);font-weight:800;font-variant-numeric:tabular-nums;width:44px;text-align:right;flex-shrink:0;}
+.op-val.gold{color:var(--gold);}
+.wh-winchester .op-bar{background:var(--green);}
+.wh-longmont   .op-bar{background:var(--blue);}
+.wh-fortmyer   .op-bar{background:var(--purple);}
+
+/* ── BOTTOM ROW ── */
+#row-bottom{display:flex;gap:4px;min-height:0;overflow:hidden;}
+.shippers-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden;min-height:0;}
+.shippers-col{display:flex;flex-direction:column;justify-content:space-evenly;border-right:1px solid var(--border);}
+.shippers-col:last-child{border-right:none;}
+.no-data{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);}
+.loading{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:10px;font-size:13px;}
+.spinner{width:24px;height:24px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── STATUS BAR ── */
+#status-bar{position:fixed;bottom:0;left:0;right:0;padding:3px 12px;font-size:10px;color:var(--muted);background:rgba(10,22,40,.8);display:flex;gap:12px;align-items:center;}
+#status-bar span{opacity:.6;}
+#status-dot{width:7px;height:7px;border-radius:50%;background:#555;display:inline-block;margin-right:4px;}
+#status-dot.ok{background:var(--green);}
+#status-dot.err{background:#ef4444;}
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="topbar">
+    <div class="tabs">
+      <button class="tab nav-tab active-nav">WH</button>
+    </div>
+    <div class="topbar-title">Warehouse Logistics</div>
+    <div class="clock-block">
+      <div class="clock" id="clock">--:-- --</div>
+      <div class="clock-date" id="cdate"></div>
+      <div class="clock-upd" id="cupd">Connecting…</div>
+    </div>
+  </div>
+  <div class="heroes" id="heroes"><div class="loading"><div class="spinner"></div>Pulling data…</div></div>
+  <div class="row" id="row-picked"></div>
+  <div class="row" id="row-received"></div>
+  <div id="row-bottom">
+    <div id="shippers-panel" style="flex:2;min-width:0;min-height:0;overflow:hidden;"></div>
+  </div>
+</div>
+
+<div id="status-bar">
+  <span id="status-dot"></span>
+  <span id="status-text">Initializing…</span>
+  <span style="margin-left:auto" id="last-fetch-time"></span>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CONFIGURATION — fill these in before deploying
+═══════════════════════════════════════════════════════════════ */
+const CONFIG = {
+  tenantId:     "YOUR_TENANT_ID",           // e.g. "d1e88d08-dc83-4eed-ab25-35e2018b15e9"
+  clientId:     "YOUR_CLIENT_ID",           // Azure AD app (client) ID
+  clientSecret: "YOUR_CLIENT_SECRET",       // Azure AD app secret
+
+  // SharePoint site & list IDs from the briefing
+  siteId:       "pisceshealthcom.sharepoint.com,d1e88d08-dc83-4eed-ab25-35e2018b15e9,1ba36505-4d34-4587-bdd7-f756fb78bc0d",
+  warehouseListId: "2038d13f-ce6c-48fd-8165-dfa7b28522ef",   // WarehouseData
+  pbListId:        "3f15fb92-89f1-4c67-b483-00c5435ae8f0",   // PersonalBests
+
+  // How often to refresh (ms)
+  pollInterval: 60000,
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+let accessToken = null;
+let tokenExpiry  = 0;
+let data         = null;
+let _recInterval = null;
+let _recIdx      = 0;
+
+const WH        = ["Winchester","Longmont","Fort Myer"];
+const WH_COLORS = ["#00d97e","#3b82f6","#a78bfa"];
+
+/* ═══════════════════════════════════════════════════════════════
+   CLOCK
+═══════════════════════════════════════════════════════════════ */
+function tick(){
+  const n = new Date();
+  document.getElementById("clock").textContent =
+    n.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  document.getElementById("cdate").textContent =
+    n.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+}
+setInterval(tick,1000); tick();
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTH — client credentials flow (token endpoint)
+   NOTE: This exposes CLIENT_SECRET in browser source.
+   Fine for internal/closed-network TV dashboards.
+═══════════════════════════════════════════════════════════════ */
+async function getToken(){
+  if(accessToken && Date.now() < tokenExpiry - 60000) return accessToken;
+
+  const body = new URLSearchParams({
+    grant_type:    "client_credentials",
+    client_id:     CONFIG.clientId,
+    client_secret: CONFIG.clientSecret,
+    scope:         "https://graph.microsoft.com/.default",
+  });
+
+  const res = await fetch(
+    `https://login.microsoftonline.com/${CONFIG.tenantId}/oauth2/v2.0/token`,
+    { method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body }
+  );
+  if(!res.ok) throw new Error(`Token fetch failed: ${res.status} ${await res.text()}`);
+  const json = await res.json();
+  accessToken = json.access_token;
+  tokenExpiry  = Date.now() + json.expires_in * 1000;
+  return accessToken;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHAREPOINT — fetch all items from a list
+═══════════════════════════════════════════════════════════════ */
+async function spGet(listId, select){
+  const tok = await getToken();
+  const url = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/${listId}/items?expand=fields(select=${select})&$top=200`;
+  const res = await fetch(url, { headers:{ Authorization:`Bearer ${tok}` } });
+  if(!res.ok) throw new Error(`SP fetch failed ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  return json.value || [];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA TRANSFORMATION
+   WarehouseData rows: Title = "{Warehouse}_{period}"
+   e.g. "Winchester_today", "Longmont_week", "Fort Myer_month"
+   Plus "Shippers_today", "Shippers_week", "Shippers_month"
+═══════════════════════════════════════════════════════════════ */
+function parseJson(str){
+  if(!str) return {};
+  try{ return JSON.parse(str); }catch{ return {}; }
+}
+
+function transformWarehouseData(items){
+  // Build structure:
+  // data.data[period][warehouse][metric] = value
+  // data.shippers[period][name] = count
+  const out = {
+    data:     { today:{}, week:{}, month:{} },
+    shippers: { today:{}, week:{}, month:{} },
+    scraped_at: null,
+  };
+
+  for(const item of items){
+    const f = item.fields || {};
+    const title = (f.Title || "").trim();
+    if(!title) continue;
+
+    // Split on last underscore to handle "Fort Myer_today"
+    const lastUnderscore = title.lastIndexOf("_");
+    if(lastUnderscore === -1) continue;
+    const wh     = title.slice(0, lastUnderscore);   // e.g. "Fort Myer"
+    const period = title.slice(lastUnderscore + 1);   // e.g. "today"
+
+    if(!["today","week","month"].includes(period)) continue;
+
+    const scrapedAt = f.ScrapedAt || null;
+    if(scrapedAt && (!out.scraped_at || scrapedAt > out.scraped_at))
+      out.scraped_at = scrapedAt;
+
+    if(wh === "Shippers"){
+      // ShipperData is a JSON object: {name: count}
+      const sd = parseJson(f.ShipperData);
+      for(const [name,val] of Object.entries(sd)){
+        out.shippers[period][name] = (parseFloat(out.shippers[period][name])||0) + (parseFloat(val)||0);
+      }
+      continue;
+    }
+
+    if(!WH.includes(wh)) continue;
+    if(!out.data[period][wh]) out.data[period][wh] = {};
+
+    const whData = out.data[period][wh];
+
+    // Merge JSON operator maps
+    const pickerData    = parseJson(f.PickerData);
+    const receiverData  = parseJson(f.ReceiverData);
+    const pickRateData  = parseJson(f.PickRateData);
+    const receiveRateData = parseJson(f.ReceiveRateData);
+    const shipperData   = parseJson(f.ShipperData);
+
+    whData["Units Picked"]                         = pickerData;
+    whData["Units Received (POs and RAs)"]         = receiverData;
+    whData["Units Picked Per Hour"]                = pickRateData;
+    whData["Units Received Per Hour (POs and RAs)"]= receiveRateData;
+
+    // Scalar fields
+    whData["Units Shipped"]  = parseFloat(f.UnitsShipped)  || 0;
+    whData["Orders Shipped"] = parseFloat(f.OrdersShipped) || 0;
+
+    // Shippers from this row (alternative source — ShipperData on WH row)
+    for(const [name,val] of Object.entries(shipperData)){
+      out.shippers[period][name] = (parseFloat(out.shippers[period][name])||0) + (parseFloat(val)||0);
+    }
+  }
+  return out;
+}
+
+function transformPBData(items){
+  // PersonalBests list — assumed structure:
+  // Title = operator name, Category = "picking"|"receiving"|"shipped", Value = number
+  const pb = { picking:{}, receiving:{}, shipped:{} };
+  for(const item of items){
+    const f = item.fields || {};
+    const name = (f.Title||"").trim();
+    const cat  = (f.Category||"").toLowerCase();
+    const val  = parseFloat(f.Value) || 0;
+    if(name && pb[cat] !== undefined) pb[cat][name] = val;
+  }
+  return pb;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN FETCH + RENDER LOOP
+═══════════════════════════════════════════════════════════════ */
+function setStatus(ok, msg){
+  const dot  = document.getElementById("status-dot");
+  const text = document.getElementById("status-text");
+  dot.className = ok ? "ok" : "err";
+  text.textContent = msg;
+}
+
+async function fetchAndRender(){
+  try{
+    setStatus(true,"Fetching from SharePoint…");
+
+    const [whItems, pbItems] = await Promise.all([
+      spGet(CONFIG.warehouseListId,
+        "Title,ScrapedAt,UnitsPicked,UnitsShipped,OrdersShipped,UnitsReceived,PickerData,ReceiverData,PickRateData,ReceiveRateData,ShipperData"),
+      spGet(CONFIG.pbListId,
+        "Title,Category,Value"),
+    ]);
+
+    const transformed = transformWarehouseData(whItems);
+    transformed.personal_bests = transformPBData(pbItems);
+
+    data = transformed;
+
+    const upd = data.scraped_at
+      ? "Scraped " + new Date(data.scraped_at).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"})
+      : "Data loaded";
+    document.getElementById("cupd").textContent = upd;
+    document.getElementById("last-fetch-time").textContent =
+      "Fetched " + new Date().toLocaleTimeString();
+
+    setStatus(true,"Connected to SharePoint");
+    render(data);
+
+  }catch(e){
+    console.error("fetchAndRender error:", e);
+    setStatus(false, "Error: " + e.message);
+    document.getElementById("cupd").textContent = "⚠ Fetch error — retrying…";
+  }
+}
+
+setInterval(fetchAndRender, CONFIG.pollInterval);
+fetchAndRender();
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function formatName(name){
+  if(!name) return name;
+  const parts = name.split(/[ .]+/).filter(Boolean);
+  if(parts.length < 2) return name;
+  return parts[0] + " " + parts[parts.length-1][0].toUpperCase() + ".";
+}
+
+const fmt = v => {
+  const n = parseFloat(v);
+  return isNaN(n) ? "—" : Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1);
+};
+
+const wdat = (wh, m) => {
+  try{ return data.data["today"][wh][m] || {}; }catch{ return {}; }
+};
+
+const sops = d => Object.entries(d)
+  .map(([n,v]) => ({n, v:parseFloat(v)||0}))
+  .filter(o => o.v > 0)
+  .sort((a,b) => b.v - a.v);
+
+function globalWinner(metric){
+  let best = null;
+  for(const wh of WH)
+    for(const [n,v] of Object.entries(wdat(wh,metric)))
+      if(!best || parseFloat(v) > best.v) best = {n, v:parseFloat(v)||0, wh};
+  return best;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════════════ */
+function render(d){
+  renderHeroes(d);
+  renderMetricRow("row-picked",   "Units Picked",                        "var(--green)");
+  renderMetricRow("row-received", "Units Received (POs and RAs)",        "var(--blue)");
+  renderBottomRow(d);
+}
+
+function renderHeroes(d){
+  const pw = globalWinner("Units Picked");
+  const rw = globalWinner("Units Received (POs and RAs)");
+  const shippersToday = d.shippers?.today || {};
+  const topShipper = Object.entries(shippersToday)
+    .map(([n,v]) => ({n, v:parseFloat(v)||0}))
+    .filter(o => o.v > 0)
+    .sort((a,b) => b.v - a.v)[0] || null;
+
+  const pb = d.personal_bests || null;
+  const topRec = obj => {
+    if(!obj) return null;
+    const e = Object.entries(obj).map(([n,v]) => ({n, v:parseFloat(v)||0})).filter(o => o.v > 0);
+    return e.length ? e.reduce((a,b) => b.v > a.v ? b : a) : null;
+  };
+  const recPick = topRec(pb?.picking);
+  const recRecv = topRec(pb?.receiving);
+  const recShip = topRec(pb?.shipped);
+
+  document.getElementById("heroes").innerHTML = `
+    <div class="winner-card">
+      <div class="winner-emoji">👑</div>
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div class="winner-label">🏆 Today Picking Champion</div>
+        <div class="winner-name">${pw ? formatName(pw.n) : "—"}</div>
+        <div class="winner-stat">${pw ? fmt(pw.v)+" units picked" : "No data"}</div>
+      </div>
+    </div>
+    <div class="winner-card">
+      <div class="winner-emoji">🏭</div>
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div class="winner-label">🏭 Today Receiving Champion</div>
+        <div class="winner-name">${rw ? formatName(rw.n) : "—"}</div>
+        <div class="winner-stat">${rw ? fmt(rw.v)+" units received" : "No data"}</div>
+      </div>
+    </div>
+    <div class="winner-card">
+      <div class="winner-emoji">📦</div>
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div class="winner-label">📦 Today Shipping Champion</div>
+        <div class="winner-name">${topShipper ? formatName(topShipper.n) : "—"}</div>
+        <div class="winner-stat">${topShipper ? fmt(topShipper.v)+" shipments" : "No data"}</div>
+      </div>
+    </div>
+    <div class="winner-card" id="rec-card" style="opacity:0;transition:opacity 0.4s ease;">
+      <div class="winner-emoji" id="rec-emoji"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div class="winner-label" id="rec-label"></div>
+        <div class="winner-name" id="rec-name"></div>
+        <div class="winner-stat" id="rec-stat"></div>
+      </div>
+    </div>`;
+
+  const slides = [
+    {emoji:'🏃', label:'Picking',   n:recPick ? formatName(recPick.n) : 'No record yet', stat:recPick ? fmt(recPick.v)+' units picked'   : '—'},
+    {emoji:'📦', label:'Receiving', n:recRecv ? formatName(recRecv.n) : 'No record yet', stat:recRecv ? fmt(recRecv.v)+' units received' : '—'},
+    {emoji:'🚚', label:'Shipping',  n:recShip ? formatName(recShip.n) : 'No record yet', stat:recShip ? fmt(recShip.v)+' shipments'       : '—'},
+  ];
+  startRecRotation(slides);
+}
+
+function startRecRotation(slides){
+  if(_recInterval) clearInterval(_recInterval);
+  _recIdx = 0;
+  function show(){
+    const el = document.getElementById('rec-card');
+    if(!el){ clearInterval(_recInterval); return; }
+    const s = slides[_recIdx % slides.length];
+    el.style.opacity = '0';
+    setTimeout(()=>{
+      document.getElementById('rec-emoji').textContent = s.emoji;
+      document.getElementById('rec-label').textContent = '🏆 All-Time Record — ' + s.label;
+      document.getElementById('rec-name').textContent  = s.n;
+      document.getElementById('rec-stat').textContent  = s.stat;
+      el.style.opacity = '1';
+      _recIdx = (_recIdx + 1) % slides.length;
+    }, 220);
+  }
+  show();
+  _recInterval = setInterval(show, 4000);
+}
+
+function renderMetricRow(rowId, metric, rowColor){
+  const rateMetric = metric === "Units Picked"
+    ? "Units Picked Per Hour"
+    : "Units Received Per Hour (POs and RAs)";
+
+  document.getElementById(rowId).innerHTML = WH.map((wh,i) => {
+    const ops   = sops(wdat(wh, metric));
+    const total = ops.reduce((s,o) => s + o.v, 0);
+    const maxV  = ops.length ? ops[0].v : 1;
+    const color = rowColor || WH_COLORS[i];
+    const whCls = {'Winchester':'wh-winchester','Longmont':'wh-longmont','Fort Myer':'wh-fortmyer'}[wh] || '';
+    const rateMap = wdat(wh, rateMetric);
+
+    const rows = ops.length === 0
+      ? `<div class="no-data">No data</div>`
+      : ops.map((op,j) => {
+          const gold = j === 0;
+          const pct  = Math.round(op.v / maxV * 100);
+          const hr   = rateMap[op.n] ? fmt(rateMap[op.n]) : null;
+          return `<div class="op-row ${gold?"gold":""}">
+            ${gold ? `<span class="op-crown">👑</span>` : `<span class="op-rank">${j+1}</span>`}
+            <span class="op-name ${gold?"gold":""}">${formatName(op.n)}</span>
+            ${hr ? `<span class="op-hr">${hr}/hr</span>` : ""}
+            <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%"></div></div>
+            <span class="op-val ${gold?"gold":""}">${fmt(op.v)}</span>
+          </div>`;
+        }).join("");
+
+    const avgOps  = sops(wdat(wh, rateMetric));
+    const avgSum  = avgOps.reduce((a,o) => a + o.v, 0);
+    const avgDisp = avgSum > 0 ? fmt(avgSum) : "";
+
+    return `<div class="panel ${whCls}" style="border-top:2px solid ${color}">
+      <div class="panel-head">
+        <span class="panel-wh" style="flex:1">${wh} ${metric==="Units Picked"?"Picking":"Receiving"}</span>
+        <span class="panel-num" style="color:${color}">${fmt(total)}</span>
+        ${avgDisp ? `<span class="panel-avghr">${avgDisp} avg/hr</span>` : ""}
+      </div>
+      <div class="panel-body">${rows}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderBottomRow(d){
+  const shippersToday = d.shippers?.today || {};
+  const shippers = Object.entries(shippersToday)
+    .map(([n,v]) => ({n, v:parseFloat(v)||0}))
+    .filter(o => o.v > 0)
+    .sort((a,b) => b.v - a.v);
+
+  const maxV  = shippers.length ? shippers[0].v : 1;
+  const total = shippers.reduce((s,o) => s + o.v, 0);
+
+  // Split into 3 columns
+  const perCol = Math.ceil(shippers.length / 3) || 1;
+  const cols   = [[],[],[]];
+  shippers.forEach((op,j) => cols[Math.min(2, Math.floor(j/perCol))].push({op,j}));
+
+  const shippersBody = shippers.length === 0
+    ? `<div class="no-data">Shipper data not yet loaded</div>`
+    : `<div class="shippers-grid">${cols.map(col =>
+        `<div class="shippers-col">${col.map(({op,j}) => {
+          const gold = j === 0;
+          const pct  = Math.round(op.v / maxV * 100);
+          return `<div class="op-row ${gold?"gold":""}">
+            ${gold ? `<span class="op-crown">👑</span>` : `<span class="op-rank">${j+1}</span>`}
+            <span class="op-name ${gold?"gold":""}">${formatName(op.n)}</span>
+            <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%;background:${gold?"var(--gold)":"var(--purple)"}"></div></div>
+            <span class="op-val ${gold?"gold":""}">${fmt(op.v)}</span>
+          </div>`;
+        }).join("")}</div>`
+      ).join("")}</div>`;
+
+  document.getElementById("shippers-panel").innerHTML =
+    `<div class="panel" style="border-top:2px solid var(--purple);height:100%;">
+      <div class="panel-head">
+        <span class="panel-wh" style="flex:1">📦 Individual Shippers — Today</span>
+        <span class="panel-num" style="color:var(--purple)">${fmt(total)}</span>
+      </div>
+      <div class="panel-body" style="padding:0;">${shippersBody}</div>
+    </div>`;
+}
+</script>
+</body>
+</html>
