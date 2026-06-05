@@ -109,29 +109,128 @@ html,body{background:var(--navy);color:#fff;font-family:'Segoe UI',system-ui,san
   <span style="margin-left:auto" id="last-fetch-time"></span>
 </div>
 
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
-   CONFIGURATION — fill these in before deploying
+   CONFIGURATION — fill in CLIENT_ID and TENANT_ID only
+   No client secret needed — user logs in once via Microsoft popup
 ═══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  tenantId:     "825d358b-9b1a-4580-a5ef-ec1fb35fbda1",           // e.g. "d1e88d08-dc83-4eed-ab25-35e2018b15e9"
-  clientId:     "c2ad8d44-e25c-4cde-9dcd-42aafb05096e",           // Azure AD app (client) ID
-  clientSecret: "YOUR_CLIENT_SECRET",       // Azure AD app secret
+  clientId:  "c2ad8d44-e25c-4cde-9dcd-42aafb05096e",
+  tenantId:  "825d358b-9b1a-4580-a5ef-ec1fb35fbda1",
 
-  // SharePoint site & list IDs from the briefing
-  siteId:       "pisceshealthcom.sharepoint.com,d1e88d08-dc83-4eed-ab25-35e2018b15e9,1ba36505-4d34-4587-bdd7-f756fb78bc0d",
-  warehouseListId: "2038d13f-ce6c-48fd-8165-dfa7b28522ef",   // WarehouseData
-  pbListId:        "3f15fb92-89f1-4c67-b483-00c5435ae8f0",   // PersonalBests
+  siteId:          "pisceshealthcom.sharepoint.com,d1e88d08-dc83-4eed-ab25-35e2018b15e9,1ba36505-4d34-4587-bdd7-f756fb78bc0d",
+  warehouseListId: "2038d13f-ce6c-48fd-8165-dfa7b28522ef",
+  pbListId:        "3f15fb92-89f1-4c67-b483-00c5435ae8f0",
 
-  // How often to refresh (ms)
   pollInterval: 60000,
 };
 
 /* ═══════════════════════════════════════════════════════════════
+   MSAL SETUP
+═══════════════════════════════════════════════════════════════ */
+const msalApp = new msal.PublicClientApplication({
+  auth: {
+    clientId:   CONFIG.clientId,
+    authority:  `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+    redirectUri: window.location.origin,
+  },
+  cache: { cacheLocation: "localStorage" },
+});
+
+const SCOPES = ["https://graph.microsoft.com/Sites.Read.All"];
+
+async function getToken() {
+  // Try silent first (cached token)
+  const accounts = msalApp.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const result = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      return result.accessToken;
+    } catch(e) {
+      // Silent failed — fall through to popup
+    }
+  }
+  // Popup login
+  const result = await msalApp.loginPopup({ scopes: SCOPES });
+  return result.accessToken;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHAREPOINT FETCH
+═══════════════════════════════════════════════════════════════ */
+async function spGet(listId, select) {
+  const token = await getToken();
+  const url = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/${listId}/items?expand=fields(select=${select})&$top=200`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`SP fetch failed ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  return json.value || [];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA TRANSFORMATION
+═══════════════════════════════════════════════════════════════ */
+function parseJson(str) {
+  if (!str) return {};
+  if (typeof str === "object") return str;
+  try { return JSON.parse(str); } catch { return {}; }
+}
+
+function transformWarehouseData(items) {
+  const out = {
+    data:     { today:{}, week:{}, month:{} },
+    shippers: { today:{}, week:{}, month:{} },
+    scraped_at: null,
+  };
+  for (const item of items) {
+    const f = item.fields || {};
+    const title = (f.Title || "").trim();
+    if (!title) continue;
+    const idx = title.lastIndexOf("_");
+    if (idx === -1) continue;
+    const wh     = title.slice(0, idx);
+    const period = title.slice(idx + 1);
+    if (!["today","week","month"].includes(period)) continue;
+    const scrapedAt = f.ScrapedAt || null;
+    if (scrapedAt && (!out.scraped_at || scrapedAt > out.scraped_at)) out.scraped_at = scrapedAt;
+    if (wh === "Shippers") {
+      const sd = parseJson(f.ShipperData);
+      for (const [name,val] of Object.entries(sd))
+        out.shippers[period][name] = (parseFloat(out.shippers[period][name])||0) + (parseFloat(val)||0);
+      continue;
+    }
+    if (!WH.includes(wh)) continue;
+    if (!out.data[period][wh]) out.data[period][wh] = {};
+    const wd = out.data[period][wh];
+    wd["Units Picked"]                               = parseJson(f.PickerData);
+    wd["Units Received (POs and RAs)"]               = parseJson(f.ReceiverData);
+    wd["Units Picked Per Hour"]                      = parseJson(f.PickRateData);
+    wd["Units Received Per Hour (POs and RAs)"]      = parseJson(f.ReceiveRateData);
+    wd["Units Shipped"]                              = parseFloat(f.UnitsShipped)  || 0;
+    wd["Orders Shipped"]                             = parseFloat(f.OrdersShipped) || 0;
+    const sd = parseJson(f.ShipperData);
+    for (const [name,val] of Object.entries(sd))
+      out.shippers[period][name] = (parseFloat(out.shippers[period][name])||0) + (parseFloat(val)||0);
+  }
+  return out;
+}
+
+function transformPBData(items) {
+  const pb = { picking:{}, receiving:{}, shipped:{} };
+  for (const item of items) {
+    const f   = item.fields || {};
+    const name = (f.Title||"").trim();
+    const cat  = (f.Category||"").toLowerCase();
+    const val  = parseFloat(f.Value) || 0;
+    if (name && pb[cat] !== undefined) pb[cat][name] = val;
+  }
+  return pb;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════════════ */
-let accessToken = null;
-let tokenExpiry  = 0;
 let data         = null;
 let _recInterval = null;
 let _recIdx      = 0;
@@ -152,134 +251,6 @@ function tick(){
 setInterval(tick,1000); tick();
 
 /* ═══════════════════════════════════════════════════════════════
-   AUTH — client credentials flow (token endpoint)
-   NOTE: This exposes CLIENT_SECRET in browser source.
-   Fine for internal/closed-network TV dashboards.
-═══════════════════════════════════════════════════════════════ */
-async function getToken(){
-  if(accessToken && Date.now() < tokenExpiry - 60000) return accessToken;
-
-  const body = new URLSearchParams({
-    grant_type:    "client_credentials",
-    client_id:     CONFIG.clientId,
-    client_secret: CONFIG.clientSecret,
-    scope:         "https://graph.microsoft.com/.default",
-  });
-
-  const res = await fetch(
-    `https://login.microsoftonline.com/${CONFIG.tenantId}/oauth2/v2.0/token`,
-    { method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body }
-  );
-  if(!res.ok) throw new Error(`Token fetch failed: ${res.status} ${await res.text()}`);
-  const json = await res.json();
-  accessToken = json.access_token;
-  tokenExpiry  = Date.now() + json.expires_in * 1000;
-  return accessToken;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SHAREPOINT — fetch all items from a list
-═══════════════════════════════════════════════════════════════ */
-async function spGet(listId, select){
-  const tok = await getToken();
-  const url = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/${listId}/items?expand=fields(select=${select})&$top=200`;
-  const res = await fetch(url, { headers:{ Authorization:`Bearer ${tok}` } });
-  if(!res.ok) throw new Error(`SP fetch failed ${res.status}: ${await res.text()}`);
-  const json = await res.json();
-  return json.value || [];
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   DATA TRANSFORMATION
-   WarehouseData rows: Title = "{Warehouse}_{period}"
-   e.g. "Winchester_today", "Longmont_week", "Fort Myer_month"
-   Plus "Shippers_today", "Shippers_week", "Shippers_month"
-═══════════════════════════════════════════════════════════════ */
-function parseJson(str){
-  if(!str) return {};
-  try{ return JSON.parse(str); }catch{ return {}; }
-}
-
-function transformWarehouseData(items){
-  // Build structure:
-  // data.data[period][warehouse][metric] = value
-  // data.shippers[period][name] = count
-  const out = {
-    data:     { today:{}, week:{}, month:{} },
-    shippers: { today:{}, week:{}, month:{} },
-    scraped_at: null,
-  };
-
-  for(const item of items){
-    const f = item.fields || {};
-    const title = (f.Title || "").trim();
-    if(!title) continue;
-
-    // Split on last underscore to handle "Fort Myer_today"
-    const lastUnderscore = title.lastIndexOf("_");
-    if(lastUnderscore === -1) continue;
-    const wh     = title.slice(0, lastUnderscore);   // e.g. "Fort Myer"
-    const period = title.slice(lastUnderscore + 1);   // e.g. "today"
-
-    if(!["today","week","month"].includes(period)) continue;
-
-    const scrapedAt = f.ScrapedAt || null;
-    if(scrapedAt && (!out.scraped_at || scrapedAt > out.scraped_at))
-      out.scraped_at = scrapedAt;
-
-    if(wh === "Shippers"){
-      // ShipperData is a JSON object: {name: count}
-      const sd = parseJson(f.ShipperData);
-      for(const [name,val] of Object.entries(sd)){
-        out.shippers[period][name] = (parseFloat(out.shippers[period][name])||0) + (parseFloat(val)||0);
-      }
-      continue;
-    }
-
-    if(!WH.includes(wh)) continue;
-    if(!out.data[period][wh]) out.data[period][wh] = {};
-
-    const whData = out.data[period][wh];
-
-    // Merge JSON operator maps
-    const pickerData    = parseJson(f.PickerData);
-    const receiverData  = parseJson(f.ReceiverData);
-    const pickRateData  = parseJson(f.PickRateData);
-    const receiveRateData = parseJson(f.ReceiveRateData);
-    const shipperData   = parseJson(f.ShipperData);
-
-    whData["Units Picked"]                         = pickerData;
-    whData["Units Received (POs and RAs)"]         = receiverData;
-    whData["Units Picked Per Hour"]                = pickRateData;
-    whData["Units Received Per Hour (POs and RAs)"]= receiveRateData;
-
-    // Scalar fields
-    whData["Units Shipped"]  = parseFloat(f.UnitsShipped)  || 0;
-    whData["Orders Shipped"] = parseFloat(f.OrdersShipped) || 0;
-
-    // Shippers from this row (alternative source — ShipperData on WH row)
-    for(const [name,val] of Object.entries(shipperData)){
-      out.shippers[period][name] = (parseFloat(out.shippers[period][name])||0) + (parseFloat(val)||0);
-    }
-  }
-  return out;
-}
-
-function transformPBData(items){
-  // PersonalBests list — assumed structure:
-  // Title = operator name, Category = "picking"|"receiving"|"shipped", Value = number
-  const pb = { picking:{}, receiving:{}, shipped:{} };
-  for(const item of items){
-    const f = item.fields || {};
-    const name = (f.Title||"").trim();
-    const cat  = (f.Category||"").toLowerCase();
-    const val  = parseFloat(f.Value) || 0;
-    if(name && pb[cat] !== undefined) pb[cat][name] = val;
-  }
-  return pb;
-}
-
-/* ═══════════════════════════════════════════════════════════════
    MAIN FETCH + RENDER LOOP
 ═══════════════════════════════════════════════════════════════ */
 function setStatus(ok, msg){
@@ -296,13 +267,11 @@ async function fetchAndRender(){
     const [whItems, pbItems] = await Promise.all([
       spGet(CONFIG.warehouseListId,
         "Title,ScrapedAt,UnitsPicked,UnitsShipped,OrdersShipped,UnitsReceived,PickerData,ReceiverData,PickRateData,ReceiveRateData,ShipperData"),
-      spGet(CONFIG.pbListId,
-        "Title,Category,Value"),
+      spGet(CONFIG.pbListId, "Title,Category,Value"),
     ]);
 
     const transformed = transformWarehouseData(whItems);
     transformed.personal_bests = transformPBData(pbItems);
-
     data = transformed;
 
     const upd = data.scraped_at
@@ -322,8 +291,11 @@ async function fetchAndRender(){
   }
 }
 
-setInterval(fetchAndRender, CONFIG.pollInterval);
-fetchAndRender();
+// Handle redirect after login (MSAL needs this)
+msalApp.handleRedirectPromise().then(() => {
+  setInterval(fetchAndRender, CONFIG.pollInterval);
+  fetchAndRender();
+});
 
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
