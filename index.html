@@ -279,11 +279,6 @@ async function fetchAndRender(){
 }
 
 msalApp.handleRedirectPromise().then(()=>{
-  // Force account picker every session
-  const accounts = msalApp.getAllAccounts();
-  if(accounts.length > 0){
-    msalApp.clearCache();
-  }
   setInterval(fetchAndRender,CONFIG.pollInterval);
   fetchAndRender();
 });
