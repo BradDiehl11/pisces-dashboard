@@ -86,7 +86,7 @@ html,body{
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── STATUS BAR ── */
-#status-bar{position:fixed;bottom:0;left:0;right:0;padding:0.3vh 1vw;font-size:clamp(7px,1vmin,13px);color:var(--muted);background:rgba(10,22,40,.85);display:flex;gap:1.5vw;align-items:center;}
+#status-bar{position:fixed;bottom:0;left:0;right:0;padding:0.3vh 1vw;font-size:clamp(7px,1vmin,13px);color:var(--muted);background:rgba(10,22,40,.85);display:none;gap:1.5vw;align-items:center;}
 #status-dot{width:0.8vmin;height:0.8vmin;min-width:6px;min-height:6px;border-radius:50%;background:#555;display:inline-block;margin-right:0.4vw;}
 #status-dot.ok{background:var(--green);}
 #status-dot.err{background:#ef4444;}
@@ -620,14 +620,18 @@ function renderMetricRow(rowId,metric,rowColor){
 }
 
 function renderBottomRow(d){
-  // One column per warehouse (same 3-column grid / same panel size), top-5 each,
-  // with a per-hour rate badge. Columns follow WH order: Winchester, Longmont, Ft Myer.
+  // Three separate warehouse panels (mirrors the Picking/Receiving rows):
+  // each has its own "<wh> Shipping" header, total, avg/hr, top-5 shippers,
+  // and a per-hour rate badge. Bars use the warehouse colour via .wh-* class.
   const cols=WH.map(wh=>{
     const sh=(d.shippers&&d.shippers[wh]&&d.shippers[wh].shippers)||{};
     const rt=(d.shippers&&d.shippers[wh]&&d.shippers[wh].rates)||{};
     const ops=Object.entries(sh).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v).slice(0,5);
+    const total=Object.values(sh).reduce((s,v)=>s+(parseFloat(v)||0),0);
+    const avgSum=Object.values(rt).reduce((s,v)=>s+(parseFloat(v)||0),0);
     const maxV=ops.length?ops[0].v:1;
-    const label=wh==="Fort Myer"?"Ft Myer":wh;
+    const label=(wh==="Fort Myer"?"Ft Myer":wh)+" Shipping";
+    const whCls={Winchester:'wh-winchester',Longmont:'wh-longmont','Fort Myer':'wh-fortmyer'}[wh]||'';
     const rows=ops.length===0
       ?`<div class="no-data">No data</div>`
       :ops.map((op,j)=>{
@@ -637,25 +641,20 @@ function renderBottomRow(d){
             ${gold?`<span class="op-crown">👑</span>`:`<span class="op-rank">${j+1}</span>`}
             <span class="op-name ${gold?"gold":""}">${formatName(op.n)}</span>
             ${hr?`<span class="op-hr">${hr}/hr</span>`:""}
-            <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%;background:${gold?"var(--gold)":"var(--purple)"}"></div></div>
+            <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%"></div></div>
             <span class="op-val ${gold?"gold":""}">${fmt(op.v)}</span>
           </div>`;
         }).join("");
-    return `<div class="shippers-col"><div class="ship-col-head">${label}</div>${rows}</div>`;
-  }).join("");
-  const total=Object.values(allShippersAgg(d)).reduce((s,v)=>s+(parseFloat(v)||0),0);
-  const anyData=WH.some(wh=>Object.keys((d.shippers&&d.shippers[wh]&&d.shippers[wh].shippers)||{}).length>0);
-  const body=anyData
-    ?`<div class="shippers-grid">${cols}</div>`
-    :`<div class="no-data">Shipper data not yet loaded</div>`;
-  document.getElementById("shippers-panel").innerHTML=
-    `<div class="panel" style="border-top:2px solid var(--purple);height:100%;">
+    return `<div class="panel ${whCls}" style="border-top:2px solid var(--purple)">
       <div class="panel-head">
-        <span class="panel-wh">📦 Shippers by Warehouse — Today</span>
+        <span class="panel-wh">${label}</span>
         <span class="panel-num" style="color:var(--purple)">${fmt(total)}</span>
+        ${avgSum>0?`<span class="panel-avghr">${fmt(avgSum)} avg/hr</span>`:""}
       </div>
-      <div class="panel-body" style="padding:0;">${body}</div>
+      <div class="panel-body">${rows}</div>
     </div>`;
+  }).join("");
+  document.getElementById("shippers-panel").innerHTML=`<div class="row" style="height:100%;">${cols}</div>`;
 }
 
 
