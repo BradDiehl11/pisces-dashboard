@@ -429,7 +429,7 @@ function transformPB(items){
 }
 
 /* ── STATE ── */
-let data=null, _recInt=null, _recIdx=0;
+let data=null, _recInt=null, _recIdx=0, _lastHeroHTML=null;
 
 /* ── CLOCK ── (top bar removed) */
 function tick(){}
@@ -505,7 +505,7 @@ function renderHeroes(d){
   const recRecv=topOf(pb.receiving);
   const recShip=topOf(pb.shipped);
 
-  document.getElementById("heroes").innerHTML=`
+  const html=`
     <div class="winner-card">
       <div class="winner-emoji">👑</div>
       <div class="winner-inner">
@@ -539,7 +539,15 @@ function renderHeroes(d){
       </div>
     </div>`;
 
-  setupHeroMarquee();
+  // Only rebuild the hero strip (and re-clone the marquee) when the content
+  // actually changed. This keeps the running CSS marquee untouched on the 60s
+  // poll, so it never tears down / hitches unless a winner changes.
+  const heroesEl=document.getElementById("heroes");
+  if(html!==_lastHeroHTML || !heroesEl.querySelector(".winner-card")){
+    heroesEl.innerHTML=html;
+    setupHeroMarquee();
+    _lastHeroHTML=html;
+  }
   startRecRotation([
     {emoji:'🏃',label:'All-Time Record — Picking',   n:recPick?formatName(recPick.n):'No record yet', stat:recPick?fmt(recPick.v)+' units picked':'—'},
     {emoji:'📦',label:'All-Time Record — Receiving', n:recRecv?formatName(recRecv.n):'No record yet', stat:recRecv?fmt(recRecv.v)+' units received':'—'},
@@ -561,7 +569,6 @@ function startRecRotation(slides){
       document.querySelectorAll('.rec-name').forEach(e=>e.textContent=s.n);
       document.querySelectorAll('.rec-stat').forEach(e=>e.innerHTML=String(s.stat).replace(/([\d,\.]+)/, '<span class="stat-num">$1</span>'));
       cards.forEach(c=>c.style.opacity='1');
-      autoFit('.winner-name');
       _recIdx=(_recIdx+1)%slides.length;
     },220);
   }
@@ -676,8 +683,17 @@ function fitAllNames(){
   autoFit(".winner-name");
   autoFit(".panel-wh");
 }
-let _rsT=null;
-window.addEventListener("resize",()=>{clearTimeout(_rsT);_rsT=setTimeout(()=>{if(data){render(data);renderRace();}},250);});
+let _rsT=null,_lastW=window.innerWidth;
+window.addEventListener("resize",()=>{
+  // Mobile browsers fire resize as the URL bar collapses/expands during scroll
+  // (height-only). Ignore those — only re-render on a real width change so the
+  // bottom champions marquee isn't torn down repeatedly while scrolling.
+  const w=window.innerWidth;
+  if(w===_lastW) return;
+  _lastW=w;
+  clearTimeout(_rsT);
+  _rsT=setTimeout(()=>{if(data){_lastHeroHTML=null;render(data);renderRace();}},250);
+});
 
 /* ══════════ DUCK RACE ══════════ */
 /* >>> EDIT DAILY GOALS HERE (Orders Shipped per warehouse) <<< */
