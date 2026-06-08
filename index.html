@@ -143,7 +143,8 @@ html,body{
                       each full-width and stacked vertically.
      • FIXED FOOTER : the hero/winner cards, looping as a horizontal marquee.
    ══════════════════════════════════════════════════════════════════════ */
-@media screen and (max-width:600px){
+@media screen and (max-width:600px),
+       screen and (orientation:landscape) and (max-height:500px){
 
   /* let the page grow and scroll vertically; clip horizontal marquee overflow */
   html,body{
@@ -240,7 +241,7 @@ html,body{
 
   /* ══ FIXED FOOTER : hero cards as a looping marquee ══ */
   #heroes{
-    position:fixed;left:0;bottom:22px;
+    position:fixed;left:0;bottom:0;
     height:84px;z-index:200;
     display:flex !important;flex-wrap:nowrap;width:max-content;
     grid-template-columns:none !important;gap:0 !important;
@@ -572,7 +573,7 @@ function startRecRotation(slides){
    classes, so startRecRotation() keeps the cloned record card in sync.
    Runs after every renderHeroes() — clones are recreated each time. */
 function setupHeroMarquee(){
-  if(!window.matchMedia("(max-width:600px)").matches) return;
+  if(!window.matchMedia("(max-width:600px), (orientation:landscape) and (max-height:500px)").matches) return;
   const heroes=document.getElementById("heroes"); if(!heroes) return;
   Array.from(heroes.children).forEach(card=>{
     const clone=card.cloneNode(true);
@@ -850,7 +851,7 @@ setInterval(()=>renderRace(),60000); // keep pace lines moving
 (function setupMobileRaceToggle(){
   const rp=document.getElementById("race-panel"); if(!rp) return;
   rp.addEventListener("click",function(e){
-    if(!window.matchMedia("(max-width:600px)").matches) return; // phones only
+    if(!window.matchMedia("(max-width:600px), (orientation:landscape) and (max-height:500px)").matches) return; // phones only
     if(e.target.closest(".race-scene")) return;                  // ignore taps inside the scene
     rp.classList.toggle("expanded");
     if(rp.classList.contains("expanded")){
