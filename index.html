@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pisces — Operator Performance</title>
+<!-- ░░ MOCK DATA — TEST ONLY: remove this line before deploying to production ░░ -->
 <style>
 /* ── CSS custom properties — all sizes derived from vmin so the layout
    scales proportionally from a 13" laptop (1366×768) to an 85" 4K TV ── */
@@ -129,6 +130,152 @@ html,body{
 @keyframes water-line-drift{0%{transform:scaleX(1) translateX(0);opacity:.12;}40%{opacity:.22;}100%{transform:scaleX(1.08) translateX(6%);opacity:.1;}}
 @keyframes grass-sway{0%,100%{transform:rotate(var(--base-lean,0deg));}30%{transform:rotate(calc(var(--base-lean,0deg) + 6deg));}60%{transform:rotate(calc(var(--base-lean,0deg) - 3deg));}}
 @keyframes clouds-scroll{0%{transform:translateX(0);}100%{transform:translateX(-1000px);}}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE VIEW  —  portrait phones only (<=600px wide).
+   Desktops, laptops and the TV are wider than this and keep the original
+   grid layout untouched. Everything below is scoped to the media query.
+
+   Layout on a phone (top → bottom):
+     • FIXED TOP    : the Winchester/Longmont/Ft Myer race-score strip.
+                      Tapping it drops the duck-race scene down as an overlay.
+     • SCROLLABLE   : Picking panels → Receiving panels → Shippers panel,
+                      each full-width and stacked vertically.
+     • FIXED FOOTER : the hero/winner cards, looping as a horizontal marquee.
+   ══════════════════════════════════════════════════════════════════════ */
+@media screen and (max-width:600px){
+
+  /* let the page grow and scroll vertically; clip horizontal marquee overflow */
+  html,body{
+    height:auto;min-height:100%;width:100%;
+    overflow-x:hidden;overflow-y:auto;
+    font-size:14px;
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* the screen becomes a normal vertical flow; top/bottom padding leaves
+     room for the fixed race header and the fixed marquee footer */
+  .screen{
+    display:block;height:auto;min-height:100vh;
+    grid-template-rows:none;gap:0;
+    padding:80px 10px 116px;
+    overflow:visible;
+  }
+
+  /* ── metric rows stack to a single column ── */
+  .row{
+    grid-template-columns:1fr !important;
+    gap:12px;margin-bottom:12px;overflow:visible;
+  }
+  #row-bottom{display:block;}
+  #shippers-panel{width:100% !important;flex:none !important;}
+
+  .panel{overflow:visible;min-height:auto;margin-bottom:0;}
+  .panel-body{overflow:visible;}
+  .panel-head{padding:8px 12px;}
+  .panel-wh{font-size:14px;}
+  .panel-num{font-size:18px;}
+  .panel-avghr{font-size:10px;}
+
+  /* operator rows: natural height, comfortable tap-sized spacing */
+  .op-row{
+    flex:none !important;max-height:none !important;height:auto;
+    padding:9px 12px;gap:10px;
+  }
+  .op-rank,.op-crown{font-size:14px;width:16px;}
+  .op-name{font-size:17px;}
+  .op-val{font-size:17px;min-width:42px;}
+  .op-hr{font-size:11px;min-width:46px;}
+  .op-bar-wrap{width:34px;height:4px;}
+
+  /* shippers list goes single-column so 1-15 read straight down */
+  .shippers-grid{grid-template-columns:1fr !important;}
+  .shippers-col{
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    justify-content:flex-start;
+  }
+  .shippers-col:last-child{border-bottom:none;}
+
+  /* ══ FIXED TOP : race-score strip + drop-down race scene ══ */
+  #race-panel{
+    position:fixed !important;top:0;left:0;right:0;
+    width:auto !important;flex:none !important;
+    z-index:200;border-top:none;border-radius:0 0 12px 12px;
+    box-shadow:0 6px 18px rgba(0,0,0,.55);
+    max-height:92vh;overflow:hidden;
+  }
+  #race-panel .race-scores{
+    cursor:pointer;position:relative;
+    padding:10px 12px 18px;background:var(--card);
+    user-select:none;-webkit-user-select:none;
+  }
+  /* chevron affordance — rotates when the race is expanded */
+  #race-panel .race-scores::after{
+    content:'▾';position:absolute;left:50%;bottom:2px;
+    transform:translateX(-50%);
+    font-size:13px;line-height:1;color:var(--muted);
+    transition:transform .3s ease;
+  }
+  #race-panel.expanded .race-scores::after{
+    transform:translateX(-50%) rotate(180deg);
+  }
+  #race-panel .race-score-num{font-size:26px;}
+  #race-panel .race-score-wh{font-size:11px;}
+  #race-panel .race-score-goal{font-size:10px;}
+
+  /* the race scene (and the pre-7am placeholder) collapse to 0 height
+     and animate open when #race-panel gets the .expanded class */
+  #race-panel .race-scene,
+  #race-panel .race-not-started{
+    flex:none !important;        /* override base flex:1 so height below applies */
+    height:0 !important;min-height:0 !important;
+    overflow:hidden;padding:0 !important;
+    transition:height .35s ease;
+  }
+  #race-panel.expanded .race-scene{height:240px !important;}
+  #race-panel.expanded .race-not-started{
+    height:120px !important;padding:10px !important;
+  }
+
+  /* ══ FIXED FOOTER : hero cards as a looping marquee ══ */
+  #heroes{
+    position:fixed;left:0;bottom:22px;
+    height:84px;z-index:200;
+    display:flex !important;flex-wrap:nowrap;width:max-content;
+    grid-template-columns:none !important;gap:0 !important;
+    margin:0;padding:6px 0;
+    background:var(--navy);border-top:1px solid var(--border);
+    overflow:visible;
+    animation:hero-marquee 32s linear infinite;
+    will-change:transform;
+  }
+  #heroes .winner-card{
+    flex:0 0 auto;width:244px;height:100%;
+    margin-right:10px;padding:6px 12px;
+    border-radius:8px;
+  }
+  #heroes .winner-inner{flex:1;min-width:0;}
+  #heroes .winner-emoji{font-size:26px;}
+  /* tighter letter-spacing so longer labels (RECEIVING/SHIPPING) fit;
+     ellipsis is a safety net so a word can never hard-cut mid-letter */
+  #heroes .winner-label{
+    font-size:10px;letter-spacing:.03em;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  }
+  #heroes .winner-name{font-size:22px;}
+  #heroes .winner-stat{
+    font-size:10px;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  }
+  /* keep the loading spinner from stretching before data arrives */
+  #heroes .loading{width:100vw;justify-content:center;}
+
+  /* status bar sits flush at the very bottom, under the marquee footer */
+  #status-bar{z-index:201;height:22px;padding:0 12px;align-items:center;}
+}
+/* identical first/second halves → translateX(-50%) loops seamlessly */
+@keyframes hero-marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 </style>
 </head>
 <body>
@@ -339,15 +486,16 @@ function renderHeroes(d){
         <div class="winner-stat">${topShipper?`<span class="stat-num">${fmt(topShipper.v)}</span> orders shipped`:"No data"}</div>
       </div>
     </div>
-    <div class="winner-card" id="rec-card" style="opacity:0;transition:opacity 0.4s ease;">
-      <div class="winner-emoji" id="rec-emoji"></div>
+    <div class="winner-card rec-card" id="rec-card" style="opacity:0;transition:opacity 0.4s ease;">
+      <div class="winner-emoji rec-emoji" id="rec-emoji"></div>
       <div class="winner-inner">
-        <div class="winner-label" id="rec-label"></div>
-        <div class="winner-name" id="rec-name"></div>
-        <div class="winner-stat" id="rec-stat"></div>
+        <div class="winner-label rec-label" id="rec-label"></div>
+        <div class="winner-name rec-name" id="rec-name"></div>
+        <div class="winner-stat rec-stat" id="rec-stat"></div>
       </div>
     </div>`;
 
+  setupHeroMarquee();
   startRecRotation([
     {emoji:'🏃',label:'All-Time Record — Picking',   n:recPick?formatName(recPick.n):'No record yet', stat:recPick?fmt(recPick.v)+' units picked':'—'},
     {emoji:'📦',label:'All-Time Record — Receiving', n:recRecv?formatName(recRecv.n):'No record yet', stat:recRecv?fmt(recRecv.v)+' units received':'—'},
@@ -359,20 +507,37 @@ function startRecRotation(slides){
   if(_recInt) clearInterval(_recInt);
   _recIdx=0;
   function show(){
-    const el=document.getElementById('rec-card'); if(!el){clearInterval(_recInt);return;}
+    // update EVERY copy of the record card (the original + any marquee clone)
+    const cards=document.querySelectorAll('.rec-card'); if(!cards.length){clearInterval(_recInt);return;}
     const s=slides[_recIdx%slides.length];
-    el.style.opacity='0';
+    cards.forEach(c=>c.style.opacity='0');
     setTimeout(()=>{
-      document.getElementById('rec-emoji').textContent=s.emoji;
-      document.getElementById('rec-label').textContent=s.label;
-      document.getElementById('rec-name').textContent=s.n;
-      document.getElementById('rec-stat').innerHTML=String(s.stat).replace(/([\d,\.]+)/, '<span class="stat-num">$1</span>');
-      el.style.opacity='1';
+      document.querySelectorAll('.rec-emoji').forEach(e=>e.textContent=s.emoji);
+      document.querySelectorAll('.rec-label').forEach(e=>e.textContent=s.label);
+      document.querySelectorAll('.rec-name').forEach(e=>e.textContent=s.n);
+      document.querySelectorAll('.rec-stat').forEach(e=>e.innerHTML=String(s.stat).replace(/([\d,\.]+)/, '<span class="stat-num">$1</span>'));
+      cards.forEach(c=>c.style.opacity='1');
       autoFit('.winner-name');
       _recIdx=(_recIdx+1)%slides.length;
     },220);
   }
   show(); _recInt=setInterval(show,4000);
+}
+
+/* On phones only, duplicate the hero cards so the CSS marquee
+   (translateX -50%) loops seamlessly. Clones are id-free but keep their
+   classes, so startRecRotation() keeps the cloned record card in sync.
+   Runs after every renderHeroes() — clones are recreated each time. */
+function setupHeroMarquee(){
+  if(!window.matchMedia("(max-width:600px)").matches) return;
+  const heroes=document.getElementById("heroes"); if(!heroes) return;
+  Array.from(heroes.children).forEach(card=>{
+    const clone=card.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.querySelectorAll("[id]").forEach(n=>n.removeAttribute("id"));
+    clone.classList.add("hero-clone");
+    heroes.appendChild(clone);
+  });
 }
 
 function renderMetricRow(rowId,metric,rowColor){
@@ -628,6 +793,21 @@ function renderRace(){
   });
 }
 setInterval(()=>renderRace(),60000); // keep pace lines moving
+
+/* ── MOBILE: tap the fixed score strip to drop the duck race down ── */
+(function setupMobileRaceToggle(){
+  const rp=document.getElementById("race-panel"); if(!rp) return;
+  rp.addEventListener("click",function(e){
+    if(!window.matchMedia("(max-width:600px)").matches) return; // phones only
+    if(e.target.closest(".race-scene")) return;                  // ignore taps inside the scene
+    rp.classList.toggle("expanded");
+    if(rp.classList.contains("expanded")){
+      // re-render once the drop-down has opened so the ducks/lanes are
+      // measured against the now full-width, full-height scene
+      setTimeout(renderRace,380);
+    }
+  });
+})();
 
 }).catch(function(e){
   document.getElementById("status-dot").className="err";
