@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pisces — Operator Performance</title>
-<!-- ░░ MOCK DATA — TEST ONLY: remove this line before deploying to production ░░ -->
-<script src="mock-data.js"></script>
 <style>
 /* ── CSS custom properties — all sizes derived from vmin so the layout
    scales proportionally from a 13" laptop (1366×768) to an 85" 4K TV ── */
@@ -81,6 +79,7 @@ html,body{
 .shippers-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden;min-height:0;}
 .shippers-col{display:flex;flex-direction:column;justify-content:space-evenly;border-right:1px solid var(--border);}
 .shippers-col:last-child{border-right:none;}
+.ship-col-head{font-size:clamp(8px,1.1vmin,15px);font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:0.3vh 0.8vw;color:var(--muted);border-bottom:1px solid var(--border);text-align:center;flex-shrink:0;}
 .no-data{flex:1;display:flex;align-items:center;justify-content:center;font-size:clamp(9px,1.2vmin,16px);color:var(--muted);}
 .loading{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:1vw;font-size:clamp(10px,1.4vmin,20px);}
 .spinner{width:2.5vmin;height:2.5vmin;border:0.3vmin solid rgba(255,255,255,.1);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
@@ -331,7 +330,7 @@ const msalApp = new msal.PublicClientApplication({
   auth:{
     clientId:CONFIG.clientId,
     authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,
-    redirectUri:"https://www.pisceslogistics.com",
+    redirectUri:window.location.origin,
     navigateToLoginRequestUrl:true,
   },
   /* FIX 2: localStorage persists across browser closes (login once, remember forever) */
@@ -372,7 +371,8 @@ const WH_COLORS=["#00d97e","#3b82f6","#a78bfa"];
 function pj(v){ if(!v) return {}; if(typeof v==="object") return v; try{return JSON.parse(v);}catch{return {};} }
 
 function transformWH(items){
-  const out={data:{today:{},week:{},month:{}},shippers:{today:{},week:{},month:{}},scraped_at:null};
+  // shippers is now keyed by warehouse: { "Winchester": {shippers:{}, rates:{}}, ... }
+  const out={data:{today:{},week:{},month:{}},shippers:{},scraped_at:null};
   for(const item of items){
     const f=item.fields||{};
     const title=(f.Title||"").trim();
@@ -382,9 +382,11 @@ function transformWH(items){
     if(!["today","week","month"].includes(period)) continue;
     const sa=f.ScrapedAt||null;
     if(sa&&(!out.scraped_at||sa>out.scraped_at)) out.scraped_at=sa;
-    if(wh==="Shippers"){
-      for(const[n,v] of Object.entries(pj(f.ShipperData)))
-        out.shippers[period][n]=(parseFloat(out.shippers[period][n])||0)+(parseFloat(v)||0);
+    // Per-warehouse shipper rows: "Shippers_<Warehouse>_today"  (wh = "Shippers_Winchester")
+    if(wh.startsWith("Shippers_")){
+      const shipWh=wh.slice(9);            // "Winchester" / "Longmont" / "Fort Myer"
+      if(period==="today")
+        out.shippers[shipWh]={shippers:pj(f.ShipperData),rates:pj(f.ShipperRateData)};
       continue;
     }
     if(!WH.includes(wh)) continue;
@@ -396,10 +398,18 @@ function transformWH(items){
     wd["Units Received Per Hour (POs and RAs)"] =pj(f.ReceiveRateData);
     wd["Units Shipped"]                         =parseFloat(f.UnitsShipped)||0;
     wd["Orders Shipped"]                        =parseFloat(f.OrdersShipped)||0;
-    for(const[n,v] of Object.entries(pj(f.ShipperData)))
-      out.shippers[period][n]=(parseFloat(out.shippers[period][n])||0)+(parseFloat(v)||0);
   }
   return out;
+}
+
+/* Aggregate every warehouse's shipper counts into one {name: total} map */
+function allShippersAgg(d){
+  const agg={};
+  for(const wh of WH){
+    const s=d.shippers&&d.shippers[wh]&&d.shippers[wh].shippers||{};
+    for(const[n,v] of Object.entries(s)) agg[n]=(agg[n]||0)+(parseFloat(v)||0);
+  }
+  return agg;
 }
 
 function transformPB(items){
@@ -434,7 +444,7 @@ async function fetchAndRender(){
   try{
     setStatus(true,"Fetching from SharePoint…");
     const[whItems,pbItems]=await Promise.all([
-      spGet(CONFIG.warehouseListId,"Title,ScrapedAt,UnitsPicked,UnitsShipped,OrdersShipped,UnitsReceived,PickerData,ReceiverData,PickRateData,ReceiveRateData,ShipperData"),
+      spGet(CONFIG.warehouseListId,"Title,ScrapedAt,UnitsPicked,UnitsShipped,OrdersShipped,UnitsReceived,PickerData,ReceiverData,PickRateData,ReceiveRateData,ShipperData,ShipperRateData"),
       spGet(CONFIG.pbListId,"Title,Category,PersonalBest"),
     ]);
     const t=transformWH(whItems);
@@ -486,7 +496,7 @@ function render(d){ renderHeroes(d); renderMetricRow("row-picked","Units Picked"
 function renderHeroes(d){
   const pw=globalWinner("Units Picked");
   const rw=globalWinner("Units Received (POs and RAs)");
-  const topShipper=Object.entries(d.shippers?.today||{}).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v)[0]||null;
+  const topShipper=Object.entries(allShippersAgg(d)).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v)[0]||null;
   const pb=d.personal_bests||{};
 
   const topOf=obj=>{ if(!obj) return null; const e=Object.entries(obj).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0); return e.length?e.reduce((a,b)=>b.v>a.v?b:a):null; };
@@ -610,28 +620,38 @@ function renderMetricRow(rowId,metric,rowColor){
 }
 
 function renderBottomRow(d){
-  const allShippers=Object.entries(d.shippers?.today||{}).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v);
-  const shippers=allShippers.slice(0,15);
-  const maxV=shippers.length?shippers[0].v:1;
-  const total=allShippers.reduce((s,o)=>s+o.v,0);
-  const perCol=5;
-  const cols=[[],[],[]];
-  shippers.forEach((op,j)=>cols[Math.min(2,Math.floor(j/perCol))].push({op,j}));
-  const body=shippers.length===0
-    ?`<div class="no-data">Shipper data not yet loaded</div>`
-    :`<div class="shippers-grid">${cols.map(col=>`<div class="shippers-col">${col.map(({op,j})=>{
-        const gold=j===0, pct=Math.round(op.v/maxV*100);
-        return `<div class="op-row ${gold?"gold":""}">
-          ${gold?`<span class="op-crown">👑</span>`:`<span class="op-rank">${j+1}</span>`}
-          <span class="op-name ${gold?"gold":""}">${formatName(op.n)}</span>
-          <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%;background:${gold?"var(--gold)":"var(--purple)"}"></div></div>
-          <span class="op-val ${gold?"gold":""}">${fmt(op.v)}</span>
-        </div>`;
-      }).join("")}</div>`).join("")}</div>`;
+  // One column per warehouse (same 3-column grid / same panel size), top-5 each,
+  // with a per-hour rate badge. Columns follow WH order: Winchester, Longmont, Ft Myer.
+  const cols=WH.map(wh=>{
+    const sh=(d.shippers&&d.shippers[wh]&&d.shippers[wh].shippers)||{};
+    const rt=(d.shippers&&d.shippers[wh]&&d.shippers[wh].rates)||{};
+    const ops=Object.entries(sh).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v).slice(0,5);
+    const maxV=ops.length?ops[0].v:1;
+    const label=wh==="Fort Myer"?"Ft Myer":wh;
+    const rows=ops.length===0
+      ?`<div class="no-data">No data</div>`
+      :ops.map((op,j)=>{
+          const gold=j===0, pct=Math.round(op.v/maxV*100);
+          const hr=rt[op.n]?fmt(rt[op.n]):null;
+          return `<div class="op-row ${gold?"gold":""}">
+            ${gold?`<span class="op-crown">👑</span>`:`<span class="op-rank">${j+1}</span>`}
+            <span class="op-name ${gold?"gold":""}">${formatName(op.n)}</span>
+            ${hr?`<span class="op-hr">${hr}/hr</span>`:""}
+            <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%;background:${gold?"var(--gold)":"var(--purple)"}"></div></div>
+            <span class="op-val ${gold?"gold":""}">${fmt(op.v)}</span>
+          </div>`;
+        }).join("");
+    return `<div class="shippers-col"><div class="ship-col-head">${label}</div>${rows}</div>`;
+  }).join("");
+  const total=Object.values(allShippersAgg(d)).reduce((s,v)=>s+(parseFloat(v)||0),0);
+  const anyData=WH.some(wh=>Object.keys((d.shippers&&d.shippers[wh]&&d.shippers[wh].shippers)||{}).length>0);
+  const body=anyData
+    ?`<div class="shippers-grid">${cols}</div>`
+    :`<div class="no-data">Shipper data not yet loaded</div>`;
   document.getElementById("shippers-panel").innerHTML=
     `<div class="panel" style="border-top:2px solid var(--purple);height:100%;">
       <div class="panel-head">
-        <span class="panel-wh">📦 Individual Shippers — Today</span>
+        <span class="panel-wh">📦 Shippers by Warehouse — Today</span>
         <span class="panel-num" style="color:var(--purple)">${fmt(total)}</span>
       </div>
       <div class="panel-body" style="padding:0;">${body}</div>
