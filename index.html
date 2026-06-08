@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pisces — Operator Performance</title>
 <!-- ░░ MOCK DATA — TEST ONLY: remove this line before deploying to production ░░ -->
+<script src="mock-data.js"></script>
 <style>
 /* ── CSS custom properties — all sizes derived from vmin so the layout
    scales proportionally from a 13" laptop (1366×768) to an 85" 4K TV ── */
@@ -316,18 +317,41 @@ const CONFIG={
 };
 
 /* ── MSAL ── */
+
+/* FIX 1: Clear stuck MSAL interaction locks on page load */
+(function clearMsalCache(){
+  Object.keys(localStorage).forEach(function(key){
+    if(key.includes("msal") && (key.includes("interaction.status") || key.includes(".request.") || key.includes(".state."))){
+      localStorage.removeItem(key);
+    }
+  });
+})();
+
 const msalApp = new msal.PublicClientApplication({
-  auth:{ clientId:CONFIG.clientId, authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`, redirectUri:window.location.origin },
-  cache:{ cacheLocation:"localStorage" },
+  auth:{
+    clientId:CONFIG.clientId,
+    authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,
+    redirectUri:"https://www.pisceslogistics.com",
+    navigateToLoginRequestUrl:true,
+  },
+  /* FIX 2: localStorage persists across browser closes (login once, remember forever) */
+  cache:{
+    cacheLocation:"localStorage",
+    storeAuthStateInCookie:true,  /* Critical for Safari ITP */
+  },
 });
 const SCOPES=["https://graph.microsoft.com/Sites.Read.All"];
 
+/* FIX 3+4: Always use redirect — works on all browsers/devices, no popup blockers */
 async function getToken(){
   const accounts=msalApp.getAllAccounts();
   if(accounts.length>0){
+    msalApp.setActiveAccount(accounts[0]);
     try{ return (await msalApp.acquireTokenSilent({scopes:SCOPES,account:accounts[0]})).accessToken; }catch(e){}
   }
-  return (await msalApp.loginPopup({scopes:SCOPES})).accessToken;
+  /* Redirect to Microsoft login — user lands back here after authenticating */
+  await msalApp.loginRedirect({scopes:SCOPES});
+  return null; /* page redirects, nothing below runs */
 }
 
 /* ── SHAREPOINT ── */
@@ -425,8 +449,17 @@ async function fetchAndRender(){
   }
 }
 
-msalApp.handleRedirectPromise().then(()=>{
-  setInterval(fetchAndRender,CONFIG.pollInterval);
+msalApp.handleRedirectPromise().then(function(result){
+  /* Handle return from loginRedirect (mobile/Safari) */
+  if(result && result.account){
+    msalApp.setActiveAccount(result.account);
+    fetchAndRender(); /* Auto-load data after redirect login */
+  }
+  setInterval(fetchAndRender, CONFIG.pollInterval);
+  fetchAndRender();
+}).catch(function(e){
+  console.error("Redirect error:", e);
+  setInterval(fetchAndRender, CONFIG.pollInterval);
   fetchAndRender();
 });
 
