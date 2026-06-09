@@ -36,6 +36,10 @@ html,body{
 
 /* ── HERO ROW ── */
 .heroes{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5vw;min-height:0;}
+/* On desktop the track is transparent to layout (cards become grid items) and
+   the duplicate "clone" cards are hidden — only the mobile marquee uses them. */
+.hero-track{display:contents;}
+.hero-clone{display:none;}
 .winner-card{
   background:linear-gradient(135deg,#1a2e6b 0%,#0d1a3d 100%);
   border:1px solid rgba(245,197,24,.4);border-top:3px solid var(--gold);
@@ -240,17 +244,26 @@ html,body{
   }
 
   /* ══ FIXED FOOTER : hero cards as a looping marquee ══ */
+  /* #heroes is a static, clipped container; the inner .hero-track carries the
+     animation. The track element persists across data refreshes and resizes
+     (only its children are swapped), so the marquee loop is NEVER reset/
+     teleported back to the start. */
   #heroes{
-    position:fixed;left:0;bottom:0;
+    position:fixed;left:0;right:0;bottom:0;
     height:84px;z-index:200;
-    display:flex !important;flex-wrap:nowrap;width:max-content;
-    grid-template-columns:none !important;gap:0 !important;
+    display:block !important;
+    width:100vw;max-width:100vw;overflow:hidden;
+    grid-template-columns:none !important;
     margin:0;padding:6px 0;
     background:var(--navy);border-top:1px solid var(--border);
-    overflow:visible;
+  }
+  #heroes .hero-track{
+    display:flex !important;flex-wrap:nowrap;width:max-content;
+    height:100%;
     animation:hero-marquee 10.67s linear infinite;
     will-change:transform;
   }
+  #heroes .hero-clone{display:flex !important;}
   #heroes .winner-card{
     flex:0 0 auto;width:244px;height:100%;
     margin-right:10px;padding:6px 12px;
@@ -281,7 +294,7 @@ html,body{
 </head>
 <body>
 <div class="screen">
-  <div class="heroes" id="heroes"><div class="loading"><div class="spinner"></div>Pulling data…</div></div>
+  <div class="heroes" id="heroes"><div class="hero-track"><div class="loading"><div class="spinner"></div>Pulling data…</div></div></div>
   <div class="row" id="row-picked"></div>
   <div class="row" id="row-received"></div>
   <div id="row-bottom">
@@ -505,49 +518,53 @@ function renderHeroes(d){
   const recRecv=topOf(pb.receiving);
   const recShip=topOf(pb.shipped);
 
-  const html=`
-    <div class="winner-card">
+  const cards=[
+    `<div class="winner-card">
       <div class="winner-emoji">👑</div>
       <div class="winner-inner">
         <div class="winner-label">🏆 Today's Top Picker</div>
         <div class="winner-name">${pw?formatName(pw.n):"—"}</div>
         <div class="winner-stat">${pw?`<span class="stat-num">${fmt(pw.v)}</span> units picked`:"No data"}</div>
       </div>
-    </div>
-    <div class="winner-card">
+    </div>`,
+    `<div class="winner-card">
       <div class="winner-emoji">🏭</div>
       <div class="winner-inner">
         <div class="winner-label">🏭 Today's Top Receiver</div>
         <div class="winner-name">${rw?formatName(rw.n):"—"}</div>
         <div class="winner-stat">${rw?`<span class="stat-num">${fmt(rw.v)}</span> units received`:"No data"}</div>
       </div>
-    </div>
-    <div class="winner-card">
+    </div>`,
+    `<div class="winner-card">
       <div class="winner-emoji">📦</div>
       <div class="winner-inner">
         <div class="winner-label">📦 Today's Top Shipper</div>
         <div class="winner-name">${topShipper?formatName(topShipper.n):"—"}</div>
         <div class="winner-stat">${topShipper?`<span class="stat-num">${fmt(topShipper.v)}</span> orders shipped`:"No data"}</div>
       </div>
-    </div>
-    <div class="winner-card rec-card" id="rec-card" style="opacity:0;transition:opacity 0.4s ease;">
-      <div class="winner-emoji rec-emoji" id="rec-emoji"></div>
+    </div>`,
+    `<div class="winner-card rec-card" style="opacity:0;transition:opacity 0.4s ease;">
+      <div class="winner-emoji rec-emoji"></div>
       <div class="winner-inner">
-        <div class="winner-label rec-label" id="rec-label"></div>
-        <div class="winner-name rec-name" id="rec-name"></div>
-        <div class="winner-stat rec-stat" id="rec-stat"></div>
+        <div class="winner-label rec-label"></div>
+        <div class="winner-name rec-name"></div>
+        <div class="winner-stat rec-stat"></div>
       </div>
-    </div>`;
+    </div>`
+  ];
+  // Duplicate the set so the CSS marquee (translateX -50%) loops seamlessly.
+  // Clones are hidden on desktop and only shown inside the mobile track.
+  const clones=cards.map(c=>c.replace('class="winner-card','class="winner-card hero-clone'));
+  const html=cards.join("")+clones.join("");
 
-  // Only rebuild the hero strip (and re-clone the marquee) when the content
-  // actually changed. This keeps the running CSS marquee untouched on the 60s
-  // poll, so it never tears down / hitches unless a winner changes.
+  // The .hero-track element is created once and reused. We only swap its inner
+  // HTML when the content actually changed — and swapping a child's contents
+  // does NOT reset the track's running marquee animation, so it never teleports
+  // back to the start on a data refresh or a window resize.
   const heroesEl=document.getElementById("heroes");
-  if(html!==_lastHeroHTML || !heroesEl.querySelector(".winner-card")){
-    heroesEl.innerHTML=html;
-    setupHeroMarquee();
-    _lastHeroHTML=html;
-  }
+  let track=heroesEl.querySelector(".hero-track");
+  if(!track){ track=document.createElement("div"); track.className="hero-track"; heroesEl.innerHTML=""; heroesEl.appendChild(track); }
+  if(html!==_lastHeroHTML){ track.innerHTML=html; _lastHeroHTML=html; }
   startRecRotation([
     {emoji:'🏃',label:'All-Time Record — Picking',   n:recPick?formatName(recPick.n):'No record yet', stat:recPick?fmt(recPick.v)+' units picked':'—'},
     {emoji:'📦',label:'All-Time Record — Receiving', n:recRecv?formatName(recRecv.n):'No record yet', stat:recRecv?fmt(recRecv.v)+' units received':'—'},
@@ -573,22 +590,6 @@ function startRecRotation(slides){
     },220);
   }
   show(); _recInt=setInterval(show,4000);
-}
-
-/* On phones only, duplicate the hero cards so the CSS marquee
-   (translateX -50%) loops seamlessly. Clones are id-free but keep their
-   classes, so startRecRotation() keeps the cloned record card in sync.
-   Runs after every renderHeroes() — clones are recreated each time. */
-function setupHeroMarquee(){
-  if(!window.matchMedia("(max-width:600px), (orientation:landscape) and (max-height:500px)").matches) return;
-  const heroes=document.getElementById("heroes"); if(!heroes) return;
-  Array.from(heroes.children).forEach(card=>{
-    const clone=card.cloneNode(true);
-    clone.removeAttribute("id");
-    clone.querySelectorAll("[id]").forEach(n=>n.removeAttribute("id"));
-    clone.classList.add("hero-clone");
-    heroes.appendChild(clone);
-  });
 }
 
 function renderMetricRow(rowId,metric,rowColor){
@@ -692,7 +693,7 @@ window.addEventListener("resize",()=>{
   if(w===_lastW) return;
   _lastW=w;
   clearTimeout(_rsT);
-  _rsT=setTimeout(()=>{if(data){_lastHeroHTML=null;render(data);renderRace();}},250);
+  _rsT=setTimeout(()=>{if(data){render(data);renderRace();}},250);
 });
 
 /* ══════════ DUCK RACE ══════════ */
