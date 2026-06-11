@@ -70,6 +70,8 @@ html,body{
 .op-name{font-size:clamp(16px,3vmin,46px);font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .op-name.gold{color:var(--gold);font-weight:800;}
 .op-hr{font-size:clamp(7px,1.1vmin,17px);color:var(--blue);font-weight:600;min-width:5vmin;text-align:right;flex-shrink:0;opacity:.9;}
+.op-pb{font-size:clamp(7px,1.1vmin,15px);color:var(--muted);font-weight:600;flex-shrink:0;opacity:.75;white-space:nowrap;}
+.op-pb.beat{color:var(--gold);opacity:1;}
 .op-bar-wrap{width:6vmin;height:0.5vmin;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;flex-shrink:0;}
 .op-bar{height:100%;border-radius:3px;transition:width .8s;}
 .op-val{font-size:clamp(16px,3vmin,46px);font-weight:800;font-variant-numeric:tabular-nums;min-width:6vmin;text-align:right;flex-shrink:0;}
@@ -495,6 +497,19 @@ function formatName(n){
   return p[0]+" "+p[p.length-1][0].toUpperCase()+".";
 }
 const fmt=v=>{ const n=parseFloat(v); return isNaN(n)?"—":Number.isInteger(n)?n.toLocaleString():n.toFixed(1); };
+/* ── PERSONAL BEST badge ── */
+function pbFor(catObj,name){
+  if(!catObj||!name) return 0;
+  if(catObj[name]!=null) return catObj[name];          // fast exact hit
+  const key=formatName(name);                          // fall back to normalized match
+  for(const k in catObj){ if(formatName(k)===key) return catObj[k]; }
+  return 0;
+}
+function pbBadge(pb,cur){
+  if(!pb||pb<=0) return "";
+  const beat=cur>=pb;                                  // at or above their best
+  return `<span class="op-pb${beat?' beat':''}">🏆${fmt(pb)}${beat?' 🔥':''}</span>`;
+}
 const wdat=(wh,m)=>{ try{return data.data["today"][wh][m]||{};}catch{return {};} };
 const sops=d=>Object.entries(d).map(([n,v])=>({n,v:parseFloat(v)||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v);
 function globalWinner(metric){
@@ -594,6 +609,8 @@ function startRecRotation(slides){
 
 function renderMetricRow(rowId,metric,rowColor){
   const rateMetric=metric==="Units Picked"?"Units Picked Per Hour":"Units Received Per Hour (POs and RAs)";
+  const pbAll=(data&&data.personal_bests)||{};
+  const pbCat=metric==="Units Picked"?pbAll.picking:pbAll.receiving;
   document.getElementById(rowId).innerHTML=WH.map((wh,i)=>{
     const ops=sops(wdat(wh,metric)).slice(0,5);
     const total=ops.reduce((s,o)=>s+o.v,0);
@@ -612,6 +629,7 @@ function renderMetricRow(rowId,metric,rowColor){
           return `<div class="op-row ${gold?"gold":""}">
             ${gold?`<span class="op-crown">👑</span>`:`<span class="op-rank">${j+1}</span>`}
             <span class="op-name ${gold?"gold":""}">${formatName(op.n)}</span>
+            ${pbBadge(pbFor(pbCat,op.n),op.v)}
             ${hr?`<span class="op-hr">${hr}/hr</span>`:""}
             <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%"></div></div>
             <span class="op-val ${gold?"gold":""}">${fmt(op.v)}</span>
@@ -632,6 +650,7 @@ function renderBottomRow(d){
   // Three separate warehouse panels (mirrors the Picking/Receiving rows):
   // each has its own "<wh> Shipping" header, total, avg/hr, top-5 shippers,
   // and a per-hour rate badge. Bars use the warehouse colour via .wh-* class.
+  const pbCat=(d.personal_bests||{}).shipped;
   const cols=WH.map(wh=>{
     const sh=(d.shippers&&d.shippers[wh]&&d.shippers[wh].shippers)||{};
     const rt=(d.shippers&&d.shippers[wh]&&d.shippers[wh].rates)||{};
@@ -649,6 +668,7 @@ function renderBottomRow(d){
           return `<div class="op-row ${gold?"gold":""}">
             ${gold?`<span class="op-crown">👑</span>`:`<span class="op-rank">${j+1}</span>`}
             <span class="op-name ${gold?"gold":""}">${formatName(op.n)}</span>
+            ${pbBadge(pbFor(pbCat,op.n),op.v)}
             ${hr?`<span class="op-hr">${hr}/hr</span>`:""}
             <div class="op-bar-wrap"><div class="op-bar" style="width:${pct}%"></div></div>
             <span class="op-val ${gold?"gold":""}">${fmt(op.v)}</span>
